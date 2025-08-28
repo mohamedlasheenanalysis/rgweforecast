@@ -1,0 +1,2674 @@
+
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>📈 تنبؤ الرياح والحرارة</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+<script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+<style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", "Helvetica Neue", Arial; }
+    .fade-in { animation: fade .3s ease-in-out; }
+    @keyframes fade { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .lang-select {
+#modelSelect{min-width:180px}
+ border-radius: 9999px; padding: 6px 10px; border: 1px solid #e5e7eb; background: white; }
+  </style>
+<style id="rgwe-brand-style">
+  :root { --rgwe-brand: #14a3d9; }
+  header .max-w-6xl { position: relative; }
+  #title-ar, #title-en{
+    color: var(--rgwe-brand) !important;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center !important;
+    margin: 0;
+    display: inline-block;
+    flex-basis: auto;
+    white-space: nowrap;
+  }
+</style>
+
+<!-- THEME: Apply early to avoid FOUC -->
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('rgwe_theme');
+    if(!t){ t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    if(t === 'dark'){ document.documentElement.classList.add('dark'); }
+  }catch(_){}
+})();
+</script>
+
+<style id="rgwe-dark-theme">
+  /* نحافظ على دعم المتصفح للأوضاع */
+  :root { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  /* لون العلامة التجارية في الظلام */
+  html.dark :root { --rgwe-brand: #38bdf8; }
+  html.dark #title-ar, html.dark #title-en { color: var(--rgwe-brand) !important; }
+
+  /* الأسطح والخلفيات */
+  html.dark body { background:#0b1220; color:#e5e7eb; }
+  html.dark header.bg-white { background:#0f172a !important; }
+  html.dark .bg-white   { background:#0f172a !important; }
+  html.dark .bg-gray-50 { background:#111827 !important; }
+  html.dark .bg-gray-100{ background:#0b1220 !important; }
+  html.dark .shadow { box-shadow: 0 10px 15px -3px rgba(0,0,0,.6), 0 4px 6px -4px rgba(0,0,0,.6) !important; }
+
+  /* النصوص الشائعة */
+  html.dark .text-gray-900 { color:#f1f5f9 !important; }
+  html.dark .text-gray-700 { color:#e5e7eb !important; }
+  html.dark .text-gray-600 { color:#cbd5e1 !important; }
+  html.dark .text-gray-500 { color:#94a3b8 !important; }
+
+  /* الحواف */
+  html.dark .border-gray-200 { border-color:#1f2937 !important; }
+
+  /* الحقول والقوائم */
+  html.dark input, html.dark select, html.dark textarea {
+    background:#0b1220; color:#e5e7eb; border-color:#334155;
+  }
+
+  /* شرائط/تنبيهات الألوان الفاتحة */
+  html.dark .bg-blue-50    { background:rgba(59,130,246,.08) !important; }
+  html.dark .bg-emerald-50 { background:rgba(16,185,129,.08) !important; }
+  html.dark .bg-red-50     { background:rgba(239,68,68,.10) !important; }
+  html.dark .bg-yellow-50  { background:rgba(234,179,8,.08) !important; }
+
+  html.dark .text-blue-900    { color:#93c5fd !important; }
+  html.dark .text-emerald-900 { color:#6ee7b7 !important; }
+  html.dark .text-red-800     { color:#fecaca !important; }
+  html.dark .text-yellow-900  { color:#fde68a !important; }
+
+  html.dark .border-blue-200    { border-color:rgba(59,130,246,.3) !important; }
+  html.dark .border-emerald-200 { border-color:rgba(16,185,129,.3) !important; }
+  html.dark .border-red-200     { border-color:rgba(239,68,68,.3) !important; }
+  html.dark .border-yellow-200  { border-color:rgba(234,179,8,.3) !important; }
+</style>
+
+<style id="rgwe-title-placement-fix">
+  /* ضع العنوان بجوار اللوجو بدل التموضع المطلق */
+  #title-ar, #title-en{
+    position: static !important;
+    left: auto !important;
+    transform: none !important;
+    text-align: start !important;
+    margin-inline-start: .5rem !important; /* مسافة صغيرة بعد اللوجو */
+    white-space: nowrap !important;
+    display: inline-block !important;
+  }
+  /* تقليل التزاحم في صف الترويسة الأيسر */
+  header .max-w-6xl > .flex.items-center.gap-3:first-child { gap: .5rem !important; }
+</style>
+
+<style id="rgwe-signature-style">
+  .rgwe-signature{
+    display:inline-flex; align-items:center; gap:.625rem;
+    font-size: .95rem; line-height:1.5;
+    color:#64748b; /* slate-500 */
+    letter-spacing:.2px;
+    user-select:text;
+   direction:ltr; gap:.625rem; }
+  .rgwe-signature .badge{
+    width:28px; height:28px; border-radius:9999px;
+    display:grid; place-items:center;
+    font-weight:700; font-size:.8rem;
+    background:linear-gradient(135deg, #0ea5e9, #22d3ee);
+    color:white;
+    box-shadow:0 4px 12px rgba(14,165,233,.35);
+  }
+  .rgwe-signature .label{ text-transform:uppercase; letter-spacing:.12em; font-weight:600; opacity:.7;  font-variant: all-small-caps; opacity:.85; }
+  .rgwe-signature .name{ text-decoration:underline; text-underline-offset:3px;  font-weight:700; color: var(--rgwe-brand, #0ea5e9); letter-spacing:.3px;}
+  .rgwe-signature .sep{ display:none !important; }
+  /* Dark mode finesse */
+  html.dark .rgwe-signature{ color:#94a3b8;  direction:ltr; gap:.625rem; } /* slate-400 */
+  html.dark .rgwe-signature .badge{ box-shadow:0 4px 12px rgba(56,189,248,.25); }
+</style>
+
+<style id="rgwe-signature-no-underline">
+  .rgwe-signature .name{ text-decoration: none !important; }
+</style>
+
+</head>
+<body class="bg-gray-50 min-h-screen">
+<header class="bg-white shadow-sm sticky top-0 z-10">
+<div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<img alt="RGWE Logo" src="data:image/png;base64,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" style="height:36px"/>
+<h1 class="text-xl font-bold text-center" id="title-ar">RGWE Forecast</h1>
+
+</div>
+<div class="text-sm text-gray-600 flex gap-2 items-center">
+<select id="modelSelect" class="lang-select" title="اختر النموذج">
+  <option value="default">Forecast (متعدد النماذج)</option>
+  <option value="ecmwf">ECMWF (10m/100m)</option>
+</select>
+<select class="lang-select" id="langSelect">
+<option selected="" value="ar">العربية</option>
+<option value="en">English</option>
+</select>
+<button class="px-3 py-1.5 rounded-2xl bg-blue-600 text-white hover:bg-blue-700" id="locBtn">استخدم موقعي</button>
+</div>
+</div>
+</header>
+<main class="max-w-6xl mx-auto p-4">
+<section class="mb-4 bg-yellow-50 border border-yellow-200 text-yellow-900 p-3 rounded-xl text-sm" id="steps">
+      الخطوات: 1) اختَر الإحداثيات أو استخدم موقعك، 2) اضغط "تحديث التنبؤ"، 3) اختَر اليوم ثم حمّل <b>PDF</b> أو <b>Excel</b>.
+    </section>
+<section class="mb-6 grid gap-3 md:grid-cols-4">
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="lat" id="latLbl">خط العرض (Latitude)</label>
+<input class="w-full border rounded-xl px-3 py-2" id="lat" step="0.0001" type="number"/>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="lon" id="lonLbl">خط الطول (Longitude)</label>
+<input class="w-full border rounded-xl px-3 py-2" id="lon" step="0.0001" type="number"/>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="windUnit" id="unitLbl">وحدة سرعة الرياح</label>
+<select class="w-full border rounded-xl px-3 py-2" id="windUnit">
+<option value="ms">متر/ثانية (m/s)</option>
+<option value="kmh">كم/ساعة (km/h)</option>
+<option value="mph">ميل/ساعة (mph)</option>
+<option value="kn">عقدة (kn)</option>
+</select>
+<label class="block text-sm text-gray-600 mt-2">ارتفاع الرياح</label>
+<select class="w-full border rounded-xl px-3 py-2" id="windHeightSel">
+<option value="10">10 m</option>
+<option selected="" value="80">80 m</option>
+<option value="120">120 m</option>
+<option value="180">180 m</option>
+</select>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow flex flex-col justify-end">
+<div aria-live="polite" class="text-xs text-gray-500 mb-2 select-none" id="lastFetch">لم يتم الجلب بعد</div>
+<div class="text-xs mb-2 select-none" id="lastDelta"></div>
+<button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-2xl font-medium" id="fetchBtn">تحديث التنبؤ</button>
+</div>
+</section>
+<section class="mb-6 grid gap-3 md:grid-cols-3">
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="emailTo">إرسال إلى (To)</label>
+<input class="w-full border rounded-xl px-3 py-2" id="emailTo" placeholder="name@domain.com; name2@domain.com" type="text" value="tarikeng@yahoo.com; roody_rfr2020@yahoo.com; Rasha_boot@yahoo.com; NECC &lt;necc.2@hotmail.com&gt;; hgadsuez@yahoo.com; hamidaelsanea@gmail.com; Eng.elharirya@gmail.com; eman_eetc@yahoo.com; control.system.necc@gmail.com; ashraflotfih@gmail.com; eng_abdelfatah73@yahoo.com"/>
+<p class="text-xs text-gray-500 mt-1">يمكن كتابة أكثر من بريد مفصول بـ ; أو , وسيتم حفظه تلقائيًا.</p>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="emailCc">نسخة إلى (CC)</label>
+<input class="w-full border rounded-xl px-3 py-2" id="emailCc" placeholder="cc1@domain.com; cc2@domain.com" type="text" value="MANSOUR Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.mansour@rasgharebwind.com&gt;; FENYAR Amged (Ras Ghareb Wind Energy S.A.E.) &lt;amged.fenyar@rasgharebwind.com&gt;; ELMEHALAWY Wael (Ras Ghareb Wind Energy S.A.E.) &lt;wael.elmehalawy@rasgharebwind.com&gt;; AYMAN Nour (Ras Ghareb Wind Energy S.A.E.) &lt;nour.ayman@rasgharebwind.com&gt;; DANIAL Abanoub (Ras Ghareb Wind Energy S.A.E.) &lt;abanoub.danial@rasgharebwind.com&gt;; EL HOSENY Raafat (Ras Ghareb Wind Energy S.A.E.) &lt;raafat.elhoseny@rasgharebwind.com&gt;; ISMAIL Mahmoud (Ras Ghareb Wind Energy S.A.E.) &lt;mahmoud.ismail@rasgharebwind.com&gt;; LASHEEN Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.lasheen@rasgharebwind.com&gt;; SALAMA Ramy (Ras Ghareb Wind Energy S.A.E.) &lt;ramy.salama@rasgharebwind.com&gt;; FOUAD Ahmed (Ras Ghareb Wind Energy S.A.E.) &lt;ahmed.fouad@rasgharebwind.com&gt;; ABDELMAKSOUD Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.abdelmaksoud@rasgharebwind.com&gt;; MOHAMED Ali (Ras Ghareb Wind Energy S.A.E.) &lt;ali.mohamed@rasgharebwind.com&gt;; islam mohamoud &lt;islam.mahmoud@rgwe.co&gt;"/>
+<p class="text-xs text-gray-500 mt-1">يمكن كتابة أكثر من بريد مفصول بـ ; أو , وسيتم حفظه تلقائيًا.</p>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="turbines" id="turbLbl">عدد التوربينات</label>
+<input class="w-full border rounded-xl px-3 py-2" id="turbines" min="1" readonly="" step="1" type="number" value="125"/>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="avail" id="availLbl">التوافر (Availability) %</label>
+<input class="w-full border rounded-xl px-3 py-2" id="avail" max="100" min="0" readonly="" step="0.1" type="number" value="98"/>
+</div>
+<div class="bg-white rounded-2xl p-4 shadow">
+<label class="block text-sm text-gray-700 mb-1" for="losses" id="lossLbl">الخسائر (Losses) %</label>
+<input class="w-full border rounded-xl px-3 py-2" id="losses" max="100" min="0" readonly="" step="0.1" type="number" value="0"/>
+</div>
+</section>
+<section aria-live="polite" class="hidden mb-4 p-3 rounded-xl" id="status" role="status"></section><!-- تبويبات: الأيام القادمة / الأسبوع القادم -->
+<section aria-label="View mode" class="mb-3 flex items-center gap-2" id="rgwe-tabs" role="tablist">
+<button aria-pressed="true" class="px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50" id="tabDailyBtn">الأيام القادمة</button>
+<button aria-pressed="false" class="px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100" id="tabWeeklyBtn">الأسبوع القادم (الأحد → السبت)</button>
+</section>
+<section class="grid gap-4 md:grid-cols-2" id="cards"></section>
+<!-- لوحة الأسبوع القادم -->
+<section class="hidden" id="weeklySection">
+<div class="bg-white rounded-2xl p-4 shadow">
+<div class="text-sm text-gray-600" id="weeklyRange"></div>
+<div class="mt-3 flex flex-wrap gap-2">
+<button class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-2xl" id="weeklyPdfBtn">توليد PDF للأسبوع</button>
+<button class="bg-gray-800 hover:bg-black text-white text-sm px-4 py-2 rounded-2xl" id="weeklyXlsBtn">تحميل Excel للأسبوع (شيت واحد)</button>
+<button class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-2xl" id="weeklyEmailBtn" type="button">تصدير كإيميل للأسبوع</button>
+</div>
+<p class="text-xs text-gray-500 mt-3">PDF: صفحة لكل يوم. Excel: كل الأيام متتالية في شيت واحد.</p>
+</div>
+</section>
+</main>
+<footer class="max-w-6xl mx-auto p-6 text-center text-xs text-gray-500">
+<div id="rgweSignature" class="rgwe-signature"><span class="badge" aria-hidden="true">ML</span><span class="label">DESIGNED BY</span><span class="sep" aria-hidden="true"></span><strong class="name">Mohamed Lasheen</strong></div>
+</footer>
+<script>
+    const statusEl = document.getElementById('status');
+    const cardsEl  = document.getElementById('cards');
+    const latEl    = document.getElementById('lat');
+    const lonEl    = document.getElementById('lon');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const lastFetchEl = document.getElementById('lastFetch');
+    const lastDeltaEl = document.getElementById('lastDelta');
+    const locBtn   = document.getElementById('locBtn');
+    const windUnitEl = document.getElementById('windUnit');
+    const langSelect = document.getElementById('langSelect');
+
+    const DEFAULT_LOCATION = { lat: 28.35831, lon: 33.07829, name: 'رأس غارب' };
+
+    const EP_WS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21];
+    const EP_MW = [0.000,0.000,2.646,11.9805,28.65275,52.5035,86.13,131.01375,186.494,231.24325,254.9225,256.9315,257.25,257.25,257.25,257.25,257.25,257.25,257.25,257.25,257.25];
+    function expectedProductionMWFromSheet(w_ms) {
+      if (!Number.isFinite(w_ms) || w_ms < EP_WS[0]) return 0;
+      let ws = Math.round(w_ms);
+      if (ws > EP_WS[EP_WS.length - 1]) ws = EP_WS[EP_WS.length - 1];
+      if (ws < EP_WS[0]) return 0;
+      return EP_MW[ws - 1];
+    }
+
+    // Lightweight hash of forecast content (FNV-1a over selected fields)
+function hashForecast(obj){
+  try{
+    const pick = {
+      hourly: obj && obj.hourly ? {
+        time: obj.hourly.time,
+        wind_speed_10m: obj.hourly.wind_speed_10m,
+        wind_speed_80m: obj.hourly.wind_speed_80m,
+        wind_speed_120m: obj.hourly.wind_speed_120m,
+        wind_speed_180m: obj.hourly.wind_speed_180m,
+        temperature_2m: obj.hourly.temperature_2m
+      } : null,
+      daily: obj && obj.daily ? obj.daily : null
+    };
+    const str = JSON.stringify(pick);
+    let h = 2166136261 >>> 0; // FNV-1a
+    for (let i=0;i<str.length;i++){
+      h ^= str.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    return h.toString(16);
+  }catch(e){ return String(Math.random()).slice(2); }
+}
+
+function renderLastDelta(status){
+  if(!lastDeltaEl) return;
+  const lang = (document.documentElement.lang === 'en') ? 'en' : 'ar';
+  if(!status){
+    try{ status = localStorage.getItem('rgwe_last_delta_status') || ''; }catch(e){ status = ''; }
+  }
+  let text = '';
+  let baseCls = 'text-xs mb-2 select-none ';
+  if(status === 'changed'){
+    text = (lang==='en') ? 'Forecast data updated' : 'تم تحديث بيانات التنبؤ';
+    lastDeltaEl.className = baseCls + 'text-green-600';
+  }else if(status === 'nochange'){
+    text = (lang==='en') ? 'No changes since last fetch' : 'لا توجد تغييرات عن آخر جلب';
+    lastDeltaEl.className = baseCls + 'text-gray-500';
+  }else if(status === 'first'){
+    text = (lang==='en') ? 'First fetch' : 'أول جلب للبيانات';
+    lastDeltaEl.className = baseCls + 'text-blue-600';
+  }else{
+    // Unknown / not set
+    text = '';
+    lastDeltaEl.className = baseCls + 'text-gray-500';
+  }
+  lastDeltaEl.textContent = text;
+}
+
+    function renderLastFetch(){
+  if (!lastFetchEl) return;
+  const lang = (document.documentElement.lang === 'en') ? 'en' : 'ar';
+  const ts = window.__lastFetchAt || Number((()=>{ try{ return localStorage.getItem('rgwe_last_fetch') }catch(e){ return 0 } })() || 0);
+  if (!ts) {
+    lastFetchEl.textContent = (lang==='en') ? 'Not fetched yet' : 'لم يتم الجلب بعد';
+    return;
+  }
+  const d = new Date(ts);
+  const fmt = { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' };
+  const s  = d.toLocaleString(lang==='en' ? 'en-GB' : 'ar-EG', fmt);
+  lastFetchEl.textContent = (lang==='en') ? ('Last fetch: ' + s) : ('آخر جلب: ' + s);
+}
+
+    function setStatus(msg, type='info'){
+      statusEl.classList.remove('hidden');
+      const base='mb-4 p-3 rounded-xl text-sm';
+      const styles = type==='error' ? 'bg-red-50 border border-red-200 text-red-800'
+                   : type==='ok'   ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
+                                    : 'bg-blue-50 border border-blue-200 text-blue-900';
+      statusEl.className = `${base} ${styles} fade-in`;
+      statusEl.textContent = msg;
+    }
+
+    function convertToMs(v,u){
+      switch(u){
+        case 'kmh': return v/3.6;
+        case 'mph': return v*0.44704;
+        case 'kn':  return v*0.514444;
+        default:    return v;
+      }
+    }
+
+    function formatDate(iso, locale='ar-EG'){
+      const d = new Date(iso+'T00:00:00');
+      return d.toLocaleDateString(locale,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    }
+
+    function hoursForDay(index, hourlyTimes){
+      const allDays = hourlyTimes.map(t => t.slice(0,10));
+      const uniqueDays = [...new Set(allDays)];
+      const targetDay  = uniqueDays[index];
+      const idx = [];
+      allDays.forEach((d,i)=>{ if(d===targetDay) idx.push(i); });
+      return idx;
+    }
+
+    // === Build card with DOM API to avoid ${} literal issues ===
+    function makeCardCommon(dayISO, locationText, tmax, tmin, wmax, wmin, unitLabel, isEN){
+      const card = document.createElement('div');
+      card.className = 'bg-white rounded-2xl shadow p-4 fade-in';
+
+      const top = document.createElement('div');
+      top.className = 'flex items-start justify-between gap-2';
+
+      const left = document.createElement('div');
+      const locDiv = document.createElement('div');
+      locDiv.className = 'text-sm text-gray-500';
+      locDiv.textContent = locationText;
+      const title = document.createElement('h3');
+      title.className = 'text-lg font-bold';
+      title.textContent = formatDate(dayISO, isEN ? 'en-GB' : 'ar-EG');
+      left.appendChild(locDiv);
+      left.appendChild(title);
+
+      const badge = document.createElement('span');
+      badge.className = 'text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full';
+      badge.textContent = isEN ? '' : ''; // will be filled by caller
+
+      top.appendChild(left);
+      top.appendChild(badge);
+
+      const grid = document.createElement('div');
+      grid.className = 'mt-3 grid grid-cols-2 gap-3 text-sm';
+
+      const tempBox = document.createElement('div');
+      tempBox.className = 'bg-gray-50 rounded-xl p-3';
+      const tempLbl = document.createElement('div');
+      tempLbl.className = 'text-gray-500';
+      tempLbl.textContent = isEN ? 'Temperature' : 'درجة الحرارة';
+      const tempVal = document.createElement('div');
+      tempVal.className = 'font-medium';
+      tempVal.textContent = isEN
+        ? `Max ${tmax.toFixed(1)}°C / Min ${tmin.toFixed(1)}°C`
+        : `العظمى ${tmax.toFixed(1)}°C / الصغرى ${tmin.toFixed(1)}°C`;
+      tempBox.appendChild(tempLbl); tempBox.appendChild(tempVal);
+
+      const windBox = document.createElement('div');
+      windBox.className = 'bg-gray-50 rounded-xl p-3';
+      const windLbl = document.createElement('div');
+      windLbl.className = 'text-gray-500';
+      windLbl.textContent = isEN ? ('Wind Speed ('+ (window.__windHeight||80) +' m)') : ('سرعة الرياح ('+ (window.__windHeight||80) +' م)');
+      const windVal = document.createElement('div');
+      windVal.className = 'font-medium';
+      windVal.textContent = isEN
+        ? `Max ${wmax.toFixed(1)} ${unitLabel} / Min ${wmin.toFixed(1)} ${unitLabel}`
+        : `العظمى ${wmax.toFixed(1)} ${unitLabel} / الصغرى ${wmin.toFixed(1)} ${unitLabel}`;
+      windBox.appendChild(windLbl); windBox.appendChild(windVal);
+
+      grid.appendChild(tempBox); grid.appendChild(windBox);
+
+      const btns = document.createElement('div');
+      btns.className = 'mt-4 flex flex-wrap gap-2';
+      const pdfBtn = document.createElement('button');
+      pdfBtn.className = 'gen-btn bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-2xl';
+      pdfBtn.textContent = isEN ? 'Generate PDF' : 'توليد PDF';
+      const xlsBtn = document.createElement('button');
+      xlsBtn.className = 'xls-btn bg-gray-800 hover:bg-black text-white text-sm px-4 py-2 rounded-2xl';
+      xlsBtn.textContent = isEN ? 'Download Excel' : 'تحميل Excel';
+      const emailBtn = document.createElement('button');
+      emailBtn.className = 'email-btn bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-2xl';
+      emailBtn.textContent = isEN ? 'Export as Email' : 'تصدير كإيميل';btns.appendChild(pdfBtn); btns.appendChild(xlsBtn);
+
+            btns.appendChild(emailBtn);card.appendChild(top);
+      card.appendChild(grid);
+      card.appendChild(btns);
+
+      return {card, badge, pdfBtn, xlsBtn, emailBtn};
+    }
+
+    function renderCardsAR(data, locationLabel, windUnit){
+      cardsEl.innerHTML='';
+      const d = data.daily;
+      for (let i = 0; i < Math.min(7, d.time.length); i++){
+        const dayISO = d.time[i];
+        const tmax = d.temperature_2m_max[i];
+        const tmin = d.temperature_2m_min[i];
+        // Compute wmax & wmin from hourly 120m for this day
+        let wmax = -Infinity;
+        let wmin = Infinity;
+        try {
+          const idxs = hoursForDay(i, data.hourly.time);
+          if (Array.isArray(idxs) && idxs.length){
+            for (const k of idxs){
+              const v = getWindArray(data)[k];
+              if (Number.isFinite(v)) {
+                if (v > wmax) wmax = v;
+                if (v < wmin) wmin = v;
+              }
+            }
+          }
+        } catch(_) {}
+        if (!Number.isFinite(wmax) && Number.isFinite(wmin)) wmax = wmin;
+        if (!Number.isFinite(wmin) && Number.isFinite(wmax)) wmin = wmax;
+        if (!Number.isFinite(wmax)) wmax = 0;
+        if (!Number.isFinite(wmin)) wmin = 0;
+        const unitLabel = (windUnit==='ms' ? 'م/ث' : windUnit);
+        const {card, badge, pdfBtn, xlsBtn, emailBtn} = makeCardCommon(dayISO, locationLabel, tmax, tmin, wmax, wmin, unitLabel, false);
+        badge.textContent = (i===0 && data.current && (function(){
+  const h = (window.__windHeight||80);
+  const key = 'wind_speed_'+h+'m';
+  const v = data.current && data.current[key];
+  const u = (windUnit==='ms' ? 'م/ث' : windUnit);
+  if (typeof v === 'number') return `اليوم رقم ${i+1} — الآن ${v.toFixed(1)} ${u}`;
+  return `اليوم رقم ${i+1}`;
+})()) || `اليوم رقم ${i+1}`;
+        pdfBtn.dataset.dayindex = String(i);
+        xlsBtn.dataset.dayindex = String(i);
+        emailBtn.dataset.dayindex = String(i);cardsEl.appendChild(card);
+      }
+      bindButtons();
+    }
+
+    function renderCardsEN(data, locationLabelEN, windUnit){
+      cardsEl.innerHTML='';
+      const d = data.daily;
+      for (let i = 0; i < Math.min(7, d.time.length); i++){
+        const dayISO = d.time[i];
+        const tmax = d.temperature_2m_max[i];
+        const tmin = d.temperature_2m_min[i];
+        // Compute wmax & wmin from hourly 120m for this day
+        let wmax = -Infinity;
+        let wmin = Infinity;
+        try {
+          const idxs = hoursForDay(i, data.hourly.time);
+          if (Array.isArray(idxs) && idxs.length){
+            for (const k of idxs){
+              const v = getWindArray(data)[k];
+              if (Number.isFinite(v)) {
+                if (v > wmax) wmax = v;
+                if (v < wmin) wmin = v;
+              }
+            }
+          }
+        } catch(_) {}
+        if (!Number.isFinite(wmax) && Number.isFinite(wmin)) wmax = wmin;
+        if (!Number.isFinite(wmin) && Number.isFinite(wmax)) wmin = wmax;
+        if (!Number.isFinite(wmax)) wmax = 0;
+        if (!Number.isFinite(wmin)) wmin = 0;
+        const unitLabel = (windUnit==='ms' ? 'm/s' : windUnit);
+        const {card, badge, pdfBtn, xlsBtn, emailBtn} = makeCardCommon(dayISO, locationLabelEN, tmax, tmin, wmax, wmin, unitLabel, true);
+        badge.textContent = `Day ${i+1}`;
+        pdfBtn.dataset.dayindex = String(i);
+        xlsBtn.dataset.dayindex = String(i);
+        emailBtn.dataset.dayindex = String(i);cardsEl.appendChild(card);
+      }
+      bindButtons();
+    }
+
+    
+
+// --- Inline email export helper (placed before bindButtons to ensure availability) ---
+(function(){
+  if (!window.exportEmailEML){
+    function toMs(v,u){
+      try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+      if (!Number.isFinite(v)) return NaN;
+      return u==='kn'||u==='knots'? v*0.514444 : (u==='kmh'? v/3.6 : (u==='mph'? v*0.44704 : v));
+    }
+    function hoursForDaySafe(dayIdx, hourlyTimes){
+      try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes).slice(0,24); }catch(e){}
+      const dateISO = window.__lastForecast?.data?.daily?.time?.[dayIdx];
+      const idxs = [];
+      for (let k=0; k<hourlyTimes.length; k++){
+        if (hourlyTimes[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+      }
+      return idxs;
+    }
+    function escHtml(s){ return String(s).replace(/[&<>"]/g, m=>({ '&':'&amp;', '<':'&lt;', '>':'&gt;'}[m])); }
+    function buildDayEmailHTML(index, data, windUnitUI){
+      const dayISO = data.daily.time[index];
+      const dt0 = new Date(dayISO + 'T00:00:00');
+      const niceDate = dt0.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+      const hIdx = hoursForDaySafe(index, data.hourly.time);
+      const times = [];
+      for (let c=0;c<24;c++){
+        const k = hIdx[c];
+        times.push(typeof k==='number' ? new Date(data.hourly.time[k]).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '');
+      }
+      let windSum = 0, windCnt = 0;
+      const windRow = [];
+      for (let i=0;i<24;i++){
+        const k = hIdx[i]; const w = toMs(getWindArray(data)[k], windUnitUI);
+        const cell = Number.isFinite(w) ? Math.round(w) : '';
+        windRow.push(cell);
+        if (Number.isFinite(w)){ windSum += w; windCnt++; }
+      }
+      const windAvg = windCnt ? (windSum/windCnt).toFixed(2) : '';
+      const availRow = Array.from({length:24}, ()=>98);
+      let pSum = 0;
+      const prodRow = [];
+      for (let i=0;i<24;i++){
+        const k = hIdx[i]; const w = toMs(getWindArray(data)[k], windUnitUI);
+        const prodMW = (typeof window.expectedProductionMWFromSheet==='function') ? window.expectedProductionMWFromSheet(w) : 0;
+        const v = Number.isFinite(prodMW) ? (+prodMW).toFixed(3) : '';
+        prodRow.push(v);
+        if (Number.isFinite(prodMW)) pSum += prodMW;
+      }
+      const prodTotal = pSum.toFixed(3);
+      const cell = 'style="border:1px solid #000;padding:8px;text-align:center;font:14px Arial,Helvetica,sans-serif"';
+      const cellL= 'style="border:1px solid #000;padding:8px;text-align:left;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+      const head = 'style="border:1px solid #000;padding:8px;text-align:center;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+      const title = 'style="text-align:center; text-align:center; padding:10px 6px;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+      const wrap = 'style="border-collapse:collapse;width:100%;max-width:1300px"';
+      const tHeader = `
+        <tr>
+          <td ${cellL}>${escHtml(niceDate)}</td>
+          ${times.map(t=>`<td ${head}>${escHtml(t)}</td>`).join('')}
+          <td ${head}>Avg / Total</td>
+        </tr>`;
+      return `
+        <div style="font:13px Arial,Helvetica,sans-serif;color:#000"><p style="margin:0 0 12px 0; white-space:pre-line">Dear all,\n\nAttached below is the RGWE forecasted output of the facility for your appreciated interest.</p>
+          <div ${title}>Forecasted Output Of The Facility, RGWE 2025</div>
+          <table ${wrap}>
+            ${tHeader}
+            <tr><td ${cellL}>Expected Wind Speed, m/s</td>${windRow.map(v=>`<td ${cell}>${escHtml(v)}</td>`).join('')}<td ${cell}>${escHtml(windAvg)}</td></tr>
+            <tr><td ${cellL}>Availability %</td>${availRow.map(v=>`<td ${cell}>${v}</td>`).join('')}<td ${cell}>98</td></tr>
+            <tr><td ${cellL}>Expected Production, MW</td>${prodRow.map(v=>`<td ${cell}>${escHtml(v)}</td>`).join('')}<td ${cell}>${escHtml(prodTotal)}</td></tr>
+          </table>
+        </div>`;
+    }
+    function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    function saveAsEml({subject, html, to='', cc=''}){
+      const eml =
+        'X-Unsent: 1\r\n' +
+        (to ? ('To: '+to+'\r\n') : '') +
+        (cc ? ('Cc: '+cc+'\r\n') : '') +
+'Subject: '+subject+'\r\n' +
+        'MIME-Version: 1.0\r\n' +
+        'Content-Type: text/html; charset=UTF-8\r\n' +
+        'Content-Transfer-Encoding: base64\r\n\r\n' +
+        b64(html);
+      const blob = new Blob([eml], {type:'message/rfc822'});
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = subject.replace(/[^a-z0-9_\-]+/gi,'_') + '.eml';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+    }
+    window.exportEmailEML = function(index, data, windUnitUI){
+      if(!data || !data.daily || !data.hourly){ alert('رجاءً حدِّث التنبؤ أولًا.'); return; }
+      const langEN = document.documentElement.lang === 'en';
+      const dayISO = data.daily.time[index];
+      const dt0 = new Date(dayISO + 'T00:00:00');
+      const niceDate = dt0.toLocaleDateString(langEN?'en-GB':'ar-EG',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+      const subject = 'Forecasted Output Of The Facility - RGWE';
+      const inpTo = document.getElementById('emailTo');
+      const toList = (inpTo && inpTo.value) ? inpTo.value.split(/[;,]/).map(s=>s.trim()).filter(Boolean) : (typeof window.__rgwe_getToList==='function' ? window.__rgwe_getToList() : []);
+      const toHeader = (toList && toList.length) ? toList.join(', ') : '';
+    const ccList = (typeof window.__rgwe_getCcList==='function') ? window.__rgwe_getCcList() : [];
+    const ccHeader = (ccList && ccList.length) ? ccList.join(', ') : '';
+
+    const html = buildDayEmailHTML(index, data, windUnitUI);
+    saveAsEml({subject, html, to: toHeader, cc: ccHeader});
+    };
+  }})();
+
+function bindButtons(){
+      document.querySelectorAll('.gen-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          const i = Number(btn.dataset.dayindex);
+          generatePDF(i, window.__lastForecast.data, (document.documentElement.lang==='en'? window.__lastForecast.locationLabelEN : window.__lastForecast.locationLabelAR), window.__lastForecast.windUnit);
+        };
+      });
+      document.querySelectorAll('.xls-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          const i = Number(btn.dataset.dayindex);
+          exportExcel(i, window.__lastForecast.data, (document.documentElement.lang==='en'? window.__lastForecast.locationLabelEN : window.__lastForecast.locationLabelAR), window.__lastForecast.windUnit);
+        };
+      });
+    
+      document.querySelectorAll('.email-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          const i = Number(btn.dataset.dayindex);
+          if (window.exportEmailEML) {
+            exportEmailEML(i, window.__lastForecast.data, window.__lastForecast.windUnit);
+          } else {
+            alert('Email export helper not loaded.');
+          }
+        };
+      });
+    }// PDF/Excel (unchanged)
+    const LOGO_DATA_URL = "data:image/png;base64,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";
+    function generatePDF(index, data, locationLabel, windUnitUI){
+      const { jsPDF } = window.jspdf;
+      const dayISO = data.daily.time[index];
+      const doc = new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+
+      document.querySelectorAll('.email-btn').forEach(btn=>{
+        btn.onclick = ()=>{
+          const i = Number(btn.dataset.dayindex);
+          exportEmailEML(i, window.__lastForecast.data, window.__lastForecast.windUnit);
+        };
+      });
+
+
+      const margin = 40;
+      const pageW = doc.internal.pageSize.getWidth();
+      const logoW = 140, logoH = 40;
+      doc.addImage(LOGO_DATA_URL, 'PNG', pageW - margin - logoW, 25, logoW, logoH);
+
+      doc.setFont('helvetica','bold').setFontSize(16);
+      doc.text('Daily Forecast – Expected Production (MW)', margin, 50);
+      doc.setFont('helvetica','normal').setFontSize(11);
+      const locEn = 'Ras Ghareb Wind Energy (RGWE)';
+      const dateEn = formatDate(dayISO, 'en-GB');
+      doc.text(`Location: ${locEn}`, margin, 75);
+      doc.text(`Date: ${dateEn}`, margin, 95);
+
+      const hIdx = hoursForDay(index, data.hourly.time);
+      const rows = [];
+      let windSum=0, tempSum=0, totalProdMW=0;
+      hIdx.forEach(k=>{
+        const dt   = new Date(data.hourly.time[k]);
+        const hour = dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+        const wMs  = convertToMs(getWindArray(data)[k], windUnitUI);
+        const T    = data.hourly.temperature_2m[k];
+        const prod = expectedProductionMWFromSheet(wMs);
+        windSum += wMs;
+        tempSum += T;
+        totalProdMW += prod;
+        rows.push([hour, wMs.toFixed(1), T.toFixed(1), prod.toFixed(3)]);
+      });
+      doc.autoTable({
+        startY:120,
+        styles:{font:'helvetica',fontSize:10,cellPadding:6,halign:'center'},
+        headStyles:{fillColor:[243,244,246],textColor:20},
+        head:[['Hour','Wind Speed (m/s)','Temperature (°C)','Expected Production (MW)']],
+        body:rows
+      });
+      const y = doc.lastAutoTable.finalY || 120;
+      const avgW = hIdx.length? windSum/hIdx.length : 0;
+      const avgT = hIdx.length? tempSum/hIdx.length : 0;
+      doc.setFont('helvetica','bold'); doc.text('Summary',margin,y+30);
+      doc.setFont('helvetica','normal');
+      doc.text(`Average wind speed (m/s): ${avgW.toFixed(2)}`, margin, y+50);
+      doc.text(`Average temperature (°C): ${avgT.toFixed(2)}`, margin, y+70);
+      doc.text(`Total expected production (MW): ${totalProdMW.toFixed(3)}`, margin, y+90);
+      doc.save(`Forecast_${dayISO}.pdf`);
+    }
+
+    function exportExcel(index, data, locationLabel, windUnitUI){
+      const hoursIdx = hoursForDay(index, data.hourly.time);
+      const dayISO   = data.daily.time[index];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+      const year     = dateObj.getFullYear();
+      const titleRow = new Array(26).fill(''); titleRow[0] = `Forecasted Output Of The Facility, RGWE ${year}`;
+      const r1 = new Array(26).fill('');
+      const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+      r1[0] = niceDate;
+      for(let c=1;c<=24;c++){ const k  = hoursIdx[c-1]; const dt = new Date(data.hourly.time[k]); r1[c] = dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+      const windRow = new Array(26).fill(''); windRow[0] = 'Expected Wind Speed, m/s';
+      let windSum=0; hoursIdx.forEach((k,i)=>{ const wMs = convertToMs(getWindArray(data)[k], windUnitUI); windRow[i+1] = Number.isFinite(wMs) ? Math.round(wMs) : ''; windSum += wMs; });
+      windRow[25] = hoursIdx.length? +(windSum/hoursIdx.length).toFixed(2) : '';
+      
+      const availRow = new Array(26).fill(''); 
+      availRow[0] = 'Availability %'; 
+      // Force 98 for all hours
+      for (let i = 0; i < 24; i++) { availRow[i+1] = 98; }
+      // Summary column = 98 as a number
+      availRow[25] = 98;
+
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW';
+      let powerSum=0; hoursIdx.forEach((k,i)=>{ const wMs = convertToMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProductionMWFromSheet(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += prodMW; });
+      powerRow[25] = +powerSum.toFixed(3);
+      const wsData = [titleRow, r1, windRow, availRow, powerRow];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Forecast');
+      // Force Availability % value to 98 (number) in Excel sheet
+      const availHeader = "Availability %";
+      let availColIndex = -1;
+      const headerRow = wsData[0] || [];
+      for (let ci = 0; ci < headerRow.length; ci++) {
+        if (String(headerRow[ci]).trim().toLowerCase() === availHeader.toLowerCase()) {
+          availColIndex = ci;
+          break;
+        }
+      }
+      if (availColIndex >= 0) {
+        for (let r = 1; r < wsData.length; r++) { // skip header row
+          const cellAddr = XLSX.utils.encode_cell({ r: r, c: availColIndex });
+          ws[cellAddr] = { v: 98, t: 'n' }; // numeric 98
+        }
+      }
+    
+      // Merge A1:Z1 and set centered bold title
+      if(!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push({ s: { r:0, c:0 }, e: { r:0, c:25 } }); // merge first row columns 0-25
+      ws['A1'] = { v: "Forecasted Output Of The Facility, RGWE 2025", s: { 
+        font: { bold: true, sz: 14 }, 
+        alignment: { horizontal: "center", vertical: "center" } 
+      }};
+    
+      
+      
+      
+      // Apply thick borders to all cells (5 rows x 26 cols)
+      const thick = { style: "thick", color: { rgb: "000000" } };
+      const rows = wsData.length;   // 5
+      const cols = 26;              // A..Z
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const addr = XLSX.utils.encode_cell({ r, c });
+          if (!ws[addr]) ws[addr] = { v: "" };
+          ws[addr].s = ws[addr].s || {};
+          // Borders on all cells
+          ws[addr].s.border = { top: thick, bottom: thick, left: thick, right: thick };
+          // Determine alignment:
+          const cellVal = (ws[addr] && typeof ws[addr].v !== "undefined") ? ws[addr].v : null;
+          const isNumeric = (typeof cellVal === 'number') || (typeof cellVal === 'string' && cellVal.trim() !== '' && !isNaN(Number(cellVal)));
+          const isTimeLike = (typeof cellVal === 'string') && /^\d{2}:\d{2}$/.test(cellVal.trim());
+          if (isNumeric || isTimeLike) {
+            // Center numeric and HH:MM time strings
+            ws[addr].s.alignment = Object.assign({}, ws[addr].s.alignment || {}, { horizontal: "center", vertical: "center" });
+          } // else: leave text default (left)
+        }
+      }
+
+
+XLSX.writeFile(wb, `Forecast_${dayISO}.xlsx`);
+    }
+
+    async function getForecast(lat, lon, windUnit){
+  const url = new URL('https://api.open-meteo.com/v1/forecast');
+  url.searchParams.set('latitude', lat);
+  url.searchParams.set('longitude', lon);
+  url.searchParams.set('timezone', 'auto');
+
+  // Variables used by the UI
+  url.searchParams.set('daily','temperature_2m_max,temperature_2m_min');
+  url.searchParams.set('hourly','temperature_2m,wind_speed_10m,wind_speed_80m,wind_speed_120m,wind_speed_180m');
+  url.searchParams.set('windspeed_unit', windUnit);
+
+  // Also fetch CURRENT conditions so the "today" card updates instantly
+  // current param removed to avoid CORS/preflight issues; use hourly[0] as 'now' approximation
+
+  // Request explicit window: today -> +13 days
+  const pad = n => String(n).padStart(2,'0');
+  const now = new Date();
+  const startISO = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const endDate  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 13);
+  const endISO   = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}`;
+  url.searchParams.set('start_date', startISO);
+  url.searchParams.set('end_date',   endISO);
+
+  // Cache bust
+  url.searchParams.set('_', Date.now());
+
+  const res = await fetch(url.toString(), {
+    cache: 'no-store',
+    
+  });
+  if(!res.ok) throw new Error('خطأ أثناء جلب البيانات من Open-Meteo');
+  return res.json();
+}
+
+    async function handleFetch(){
+      const lat = Number(latEl.value || DEFAULT_LOCATION.lat);
+      const lon = Number(lonEl.value || DEFAULT_LOCATION.lon);
+      const windUnit = windUnitEl.value;
+      const isEN = document.documentElement.lang === 'en';
+      setStatus(isEN ? 'Fetching forecast...' : 'جاري تحديث التنبؤ...', 'info');
+      try{
+        const json = await getForecast(lat, lon, windUnit);
+        // Save last fetch time
+        window.__lastFetchAt = Date.now();
+        try{ localStorage.setItem('rgwe_last_fetch', String(window.__lastFetchAt)); }catch(e){}
+        renderLastFetch();
+        
+// Compare with previous forecast snapshot
+let prevHash = null;
+try{ prevHash = localStorage.getItem('rgwe_last_hash'); }catch(e){}
+const newHash = hashForecast(json);
+let status = 'changed';
+if(prevHash === null || prevHash === '' || typeof prevHash === 'undefined'){
+  status = 'first';
+}else if(prevHash === newHash){
+  status = 'nochange';
+}else{
+  status = 'changed';
+}
+try{
+  localStorage.setItem('rgwe_last_hash', newHash);
+  localStorage.setItem('rgwe_last_delta_status', status);
+}catch(e){}
+renderLastDelta(status);
+const locLabelAR = `${DEFAULT_LOCATION.name} (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        const locLabelEN = `Ras Ghareb (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        window.__lastForecast = { data: json, locationLabelAR: locLabelAR, locationLabelEN: locLabelEN, windUnit };
+        if (isEN) {
+          renderCardsEN(json, locLabelEN, windUnit);
+          setStatus('Updated ✅ Choose a day to export.', 'ok');
+        } else {
+          renderCardsAR(json, locLabelAR, windUnit);
+          setStatus('تم التحديث بنجاح ✅ اختر يومًا للتصدير.', 'ok');
+        }
+      }catch(e){
+        console.error(e);
+        setStatus(isEN ? 'Failed to fetch data. Check coordinates and retry.' : 'تعذّر جلب البيانات. تأكّد من الإحداثيات ثم أعد المحاولة.', 'error');
+      }
+    }
+
+    fetchBtn.addEventListener('click', handleFetch);
+
+    // PIN gate
+    document.getElementById('locBtn').addEventListener('click', ()=>{
+      const isEN = document.documentElement.lang === 'en';
+      const pin = prompt(isEN ? 'Enter PIN code:' : 'أدخل رمز PIN:');
+      if (pin !== '0000') { 
+        setStatus(isEN ? '❌ Incorrect PIN. Access denied.' : '❌ رمز PIN غير صحيح. تم رفض الوصول.', 'error'); 
+        return; 
+      }
+      if(!navigator.geolocation){
+        setStatus(isEN ? 'Geolocation not supported. Using default location.' : 'المتصفح لا يدعم تحديد الموقع. تم استخدام الموقع الافتراضي.', 'error');
+        latEl.value = DEFAULT_LOCATION.lat; 
+        lonEl.value = DEFAULT_LOCATION.lon; 
+        handleFetch(); 
+        return;
+      }
+      setStatus(isEN ? 'Verifying PIN & locating...' : 'جارٍ التحقق من الـPIN وتحديد موقعك...', 'info');
+      navigator.geolocation.getCurrentPosition((pos)=>{
+        latEl.value = (+pos.coords.latitude).toFixed(4);
+        lonEl.value = (+pos.coords.longitude).toFixed(4);
+        handleFetch();
+      },()=>{
+        setStatus(isEN ? 'Couldn’t get location. Using default location.' : 'تعذّر تحديد الموقع. تم استخدام الموقع الافتراضي.', 'error');
+        latEl.value = DEFAULT_LOCATION.lat; 
+        lonEl.value = DEFAULT_LOCATION.lon;
+        handleFetch();
+      });
+    });;
+
+    // Language selector: Arabic -> reload (keep original), English -> overlay & re-render
+    langSelect.addEventListener('change', (e)=>{
+      const val = e.target.value;
+      if (val === 'ar') {
+        localStorage.setItem('locale','ar');
+        // Arabic UI tweaks
+        document.documentElement.lang = 'ar';
+        document.documentElement.dir  = 'rtl';
+        const fetchBtn = document.getElementById('fetchBtn');
+    const lastFetchEl = document.getElementById('lastFetch');
+    const lastDeltaEl = document.getElementById('lastDelta');
+        if (fetchBtn) fetchBtn.textContent = 'تحديث التنبؤ';
+        const stepsEl = document.getElementById('steps');
+        if (stepsEl) stepsEl.innerHTML = 'الخطوات: ١) أدخل الإحداثيات أو اضغط "استخدم موقعي"، ٢) اضغط <b>تحديث التنبؤ</b>، ٣) اختر اليوم ثم صدّر <b>PDF</b> أو <b>Excel</b>.';
+        location.reload();
+      } else {
+        localStorage.setItem('locale','en');
+        document.documentElement.lang = 'en';
+        document.documentElement.dir  = 'ltr';
+        const titleAr = document.getElementById('title-ar');
+        const titleEn = document.getElementById('title-en');
+        if (titleAr) titleAr.classList.add('hidden');
+        if (titleEn) titleEn.classList.remove('hidden');
+        const locBtn = document.getElementById('locBtn');
+        if (locBtn) locBtn.textContent = 'Use my location';
+        const stepsEl = document.getElementById('steps');
+        if (stepsEl) stepsEl.innerHTML = 'Steps: 1) Enter coordinates or click "Use my location", 2) Click <b>Update Forecast</b>, 3) Pick a day then export <b>PDF</b> or <b>Excel</b>.';
+        const latLbl = document.getElementById('latLbl');
+        const lonLbl = document.getElementById('lonLbl');
+        const unitLbl = document.getElementById('unitLbl');
+        const fetchBtn = document.getElementById('fetchBtn');
+    const lastFetchEl = document.getElementById('lastFetch');
+    const lastDeltaEl = document.getElementById('lastDelta');
+        const turbLbl = document.getElementById('turbLbl');
+        const availLbl = document.getElementById('availLbl');
+        const lossLbl = document.getElementById('lossLbl');
+        if (latLbl) latLbl.textContent = 'Latitude';
+        if (lonLbl) lonLbl.textContent = 'Longitude';
+        if (unitLbl) unitLbl.textContent = 'Wind speed unit';
+        if (fetchBtn) fetchBtn.textContent = 'Update Forecast';
+        if (turbLbl) turbLbl.textContent = 'Number of turbines';
+        if (availLbl) availLbl.textContent = 'Availability %';
+        if (lossLbl) lossLbl.textContent = 'Losses %';
+        const unitSel = document.getElementById('windUnit');
+        if (unitSel){
+          const opt = (v,t)=>{ const o = unitSel.querySelector(`option[value="${v}"]`); if (o) o.textContent = t; };
+          opt('ms','m/s'); opt('kmh','km/h'); opt('mph','mph'); opt('kn','kn');
+        }
+        // Update tabs & weekly section labels in English
+        const tabDailyBtn  = document.getElementById('tabDailyBtn');
+        const tabWeeklyBtn = document.getElementById('tabWeeklyBtn');
+        const weeklyPdfBtn = document.getElementById('weeklyPdfBtn');
+        const weeklyXlsBtn = document.getElementById('weeklyXlsBtn');
+        const weeklyNote   = document.querySelector('#weeklySection p.text-xs');
+        if (tabDailyBtn)  tabDailyBtn.textContent  = 'Upcoming days';
+        if (tabWeeklyBtn) tabWeeklyBtn.textContent = 'Next week (Sun → Sat)';
+        if (weeklyPdfBtn) weeklyPdfBtn.textContent = 'Generate weekly PDF';
+        if (weeklyXlsBtn) weeklyXlsBtn.textContent = 'Download weekly Excel (one sheet)';
+        if (weeklyNote)   weeklyNote.textContent   = 'PDF: one page per day. Excel: all days in a single sheet.';
+        // Re-render cards + weekly panel in English if data already loaded
+        if (window.__lastForecast) {
+          try {
+            renderCardsEN(window.__lastForecast.data, window.__lastForecast.locationLabelEN, window.__lastForecast.windUnit);
+            renderWeeklyPanel(window.__lastForecast.data);
+          } catch(e){ console.error(e); }
+        }
+      }
+    });
+
+    
+    
+    
+    
+    // === PIN guard for Latitude/Longitude manual edits (user-initiated, no-loop) ===
+    (function(){
+      let lastLat = (latEl.value && !isNaN(+latEl.value)) ? (+latEl.value).toFixed(4) : (""+DEFAULT_LOCATION.lat);
+      let lastLon = (lonEl.value && !isNaN(+lonEl.value)) ? (+lonEl.value).toFixed(4) : (""+DEFAULT_LOCATION.lon);
+
+      let pinUnlocked = false;
+      let unlockTimer = null;
+      const UNLOCK_MS = 120000; // 2 minutes
+
+      function startUnlockSession(){
+        pinUnlocked = true;
+        if (unlockTimer) clearTimeout(unlockTimer);
+        unlockTimer = setTimeout(()=>{ pinUnlocked = false; }, UNLOCK_MS);
+      }
+
+      function ensurePin(){
+        if (pinUnlocked) return true;
+        const isEN = document.documentElement.lang === 'en';
+        const pin = prompt(isEN ? 'Enter PIN code:' : 'أدخل رمز PIN:');
+        if (pin === '0000') {
+          startUnlockSession();
+          setStatus(isEN ? 'PIN accepted. You can edit latitude/longitude for 2 minutes.' : 'تم قبول الـPIN. يمكنك تعديل الإحداثيات لمدة دقيقتين.', 'ok');
+          return true;
+        }
+        if (pin === null) {
+          setStatus(isEN ? 'Cancelled.' : 'تم الإلغاء.', 'error');
+        } else {
+          setStatus(isEN ? '❌ Incorrect PIN. Access denied.' : '❌ Incorrect PIN. Access denied.', 'error');
+        }
+        return false;
+      }
+
+      function attachPinGuard(el, getLast, setLast){
+        let userInitiated = false;     // becomes true on real user interaction
+        let promptedThisFocus = false; // ensure single prompt per focus
+
+        function askOnce(){
+          promptedThisFocus = true;
+          const ok = ensurePin();
+          if (!ok){
+            el.value = getLast();
+            // blur without re-triggering prompt
+            setTimeout(()=> { el.blur(); }, 0);
+          }
+        }
+
+        // Mark that next focus is user-initiated (click/touch or keyboard Tab/Enter)
+        el.addEventListener('pointerdown', ()=>{ userInitiated = true; promptedThisFocus = false; }, {capture:true});
+        el.addEventListener('keydown', (e)=>{
+          if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') {
+            userInitiated = true;
+            promptedThisFocus = false;
+          }
+        }, true);
+
+        el.addEventListener('focus', ()=>{
+          if (pinUnlocked) return;
+          if (!userInitiated) return; // programmatic focus - don't prompt
+          if (!promptedThisFocus) askOnce();
+        });
+
+        el.addEventListener('blur', ()=>{
+          // reset flags so next real interaction can prompt again
+          userInitiated = false;
+          promptedThisFocus = false;
+        });
+
+        // Block editing while locked
+        el.addEventListener('beforeinput', (e)=>{ if (!pinUnlocked) e.preventDefault(); });
+        el.addEventListener('input', ()=>{ if (!pinUnlocked) el.value = getLast(); });
+
+        el.addEventListener('change', ()=>{
+          if (pinUnlocked){
+            const v = el.value;
+            if (!isNaN(+v) && v !== ''){
+              setLast((+v).toFixed(4));
+              startUnlockSession(); // refresh session on valid change
+            } else {
+              el.value = getLast();
+            }
+          } else {
+            el.value = getLast();
+          }
+        });
+      }
+
+      attachPinGuard(latEl, ()=>lastLat, (v)=>{ lastLat = v; });
+      attachPinGuard(lonEl, ()=>lastLon, (v)=>{ lastLon = v; });
+    })();
+
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      renderLastFetch();
+      renderLastDelta();
+      const saved = localStorage.getItem('locale') || 'ar';
+      document.getElementById('langSelect').value = saved;
+      if (saved === 'en') {
+        const ev = new Event('change');
+        document.getElementById('langSelect').dispatchEvent(ev);
+      } else {
+        document.documentElement.lang = 'ar';
+        document.documentElement.dir  = 'rtl';
+      }
+      latEl.value = DEFAULT_LOCATION.lat;
+      lonEl.value = DEFAULT_LOCATION.lon;
+      handleFetch();
+    });
+  </script>
+<script>
+(function(){
+  const weeklySection = document.getElementById('weeklySection');
+  const cardsSection  = document.getElementById('cards');
+  const tabDailyBtn   = document.getElementById('tabDailyBtn');
+  const tabWeeklyBtn  = document.getElementById('tabWeeklyBtn');
+  const weeklyRangeEl = document.getElementById('weeklyRange');
+  const weeklyPdfBtn  = document.getElementById('weeklyPdfBtn');
+  const weeklyXlsBtn  = document.getElementById('weeklyXlsBtn');
+
+  if (!weeklySection || !cardsSection || !tabDailyBtn || !tabWeeklyBtn) return;
+
+  function setTab(active){
+    if (active === 'weekly'){
+      weeklySection.classList.remove('hidden');
+      cardsSection.classList.add('hidden');
+      tabWeeklyBtn.className = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
+      tabDailyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+    } else {
+      weeklySection.classList.add('hidden');
+      cardsSection.classList.remove('hidden');
+      tabDailyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
+      tabWeeklyBtn.className = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+    }
+  }
+  tabDailyBtn.addEventListener('click', ()=> setTab('daily'));
+  tabWeeklyBtn.addEventListener('click', ()=> setTab('weekly'));
+
+  // Helpers
+  function ymdLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+  function nextSunday(from = new Date()){ const day=from.getDay(); const delta=((7-day)%7)||7; const d=new Date(from); d.setHours(0,0,0,0); d.setDate(d.getDate()+delta); return d; }
+  function getNextWeekDates(){ const start=nextSunday(new Date()); const days=[]; for(let i=0;i<7;i++){ const di=new Date(start); di.setDate(start.getDate()+i); days.push(ymdLocal(di)); } return days; }
+  function indicesForDates(dates, dailyTimes){ return dates.map(d => dailyTimes.indexOf(d)); }
+
+  function convertToMs(v,u){
+    try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+    if(!Number.isFinite(v)) return NaN;
+    switch(u){ case 'kmh': return v/3.6; case 'mph': return v*0.44704; case 'kn': return v*0.514444; default: return v; }
+  }
+  function hoursForDay(dayIdx, hourlyTimes){
+    try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes); }catch(e){}
+    const dateISO = window.__lastForecast?.data?.daily?.time?.[dayIdx];
+    const idxs = [];
+    for(let k=0;k<hourlyTimes.length;k++){ if (hourlyTimes[k].startsWith(dateISO)) idxs.push(k); if (idxs.length===24) break; }
+    return idxs;
+  }
+  function formatDate(iso, locale){
+    try{ if(window.formatDate) return window.formatDate(iso, locale||document.documentElement.lang); }catch(e){}
+    const d = new Date(iso+'T00:00:00'); return d.toLocaleDateString(locale||'ar-EG',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+  }
+  function expectedProductionMWFromSheet(w_ms){
+    try{ if(window.expectedProductionMWFromSheet) return window.expectedProductionMWFromSheet(w_ms); }catch(e){}
+    const cut=3, rated=12, cap=100;
+    if(!Number.isFinite(w_ms) || w_ms<=cut) return 0;
+    if(w_ms>=rated) return cap;
+    const n=(w_ms-cut)/(rated-cut); return Math.pow(n,3)*cap;
+  }
+
+  function renderWeeklyPanel(forecast){
+    if (!forecast || !forecast.daily || !forecast.daily.time) return;
+    const weekDates = getNextWeekDates();
+    const idxList = indicesForDates(weekDates, forecast.daily.time);
+
+    const startNice = new Date(weekDates[0] + 'T00:00:00');
+    const endNice   = new Date(weekDates[6] + 'T00:00:00');
+    const isEN = document.documentElement.lang === 'en';
+    const loc = isEN ? 'en-GB' : 'ar-EG';
+    const prefix = isEN ? 'Next week:' : 'الأسبوع القادم:';
+    weeklyRangeEl.textContent = `${prefix} ${startNice.toLocaleDateString(loc,{weekday:'long', day:'numeric', month:'long'})} → ${endNice.toLocaleDateString(loc,{weekday:'long', day:'numeric', month:'long'})}`;
+
+    const missing = idxList.some(i => i === -1);
+    if (weeklyPdfBtn) weeklyPdfBtn.disabled = missing;
+    if (weeklyXlsBtn) weeklyXlsBtn.disabled = missing;
+
+    if (missing){
+      const isEN = document.documentElement.lang === 'en';
+      if (typeof setStatus==='function') setStatus(isEN ? 'Weekly range not fully available yet. Ensure forecast_days=14, then refetch.' : 'نطاق الأسبوع غير متاح كاملًا بعد. تأكد من forecast_days=14 ثم أعد الجلب.', 'error');
+    } /* ready: no status shown per request */
+
+    if (weeklyPdfBtn) weeklyPdfBtn.onclick = () => window.generateWeeklyPDF(window.__lastForecast.data, idxList, window.__lastForecast.windUnit);
+    if (weeklyXlsBtn) weeklyXlsBtn.onclick = () => window.exportWeeklyExcel(window.__lastForecast.data, idxList, window.__lastForecast.windUnit);
+  }
+
+  function generateWeeklyPDF(data, indices, windUnitUI){
+    const { jsPDF } = window.jspdf || {}; if (!jsPDF || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) { alert('مكتبات PDF غير متوفرة'); return; }
+    const doc = new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const margin = 40;
+    indices.forEach((dayIdx, p)=>{
+      const dayISO = data.daily.time[dayIdx];
+      if (p>0) doc.addPage();
+
+      // --- Weekly logo on RIGHT like daily ---
+      try {
+        var __wkImg = (window.LOGO_WK_DATA_URL || (typeof LOGO_DATA_URL!=='undefined' ? LOGO_DATA_URL : ''));
+        if (__wkImg) {
+          var __type = __wkImg.indexOf('image/jpeg')>-1 ? 'JPEG' : 'PNG';
+          var __pageW = doc.internal.pageSize.getWidth();
+          var __logoW = 140, __logoH = 40;
+          doc.addImage(__wkImg, __type, __pageW - margin - __logoW, 25, __logoW, __logoH);
+        }
+      } catch(e) { console.warn('weekly logo error', e); }
+
+      doc.setFont('helvetica','bold').setFontSize(16);
+      doc.text('Daily Forecast – Expected Production (MW)', margin, 50);
+      doc.setFont('helvetica','normal').setFontSize(11);
+      const dateEn = formatDate(dayISO, 'en-GB');
+      doc.text(`Location: RGWE`, margin, 75);
+      doc.text(`Date: ${dateEn}`, margin, 95);
+      const hIdx = hoursForDay(dayIdx, data.hourly.time).slice(0,24);
+      const rows = []; let windSum=0, tempSum=0, totalProdMW=0;
+      hIdx.forEach(k=>{
+        const dt   = new Date(data.hourly.time[k]);
+        const hour = dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+        const wMs  = convertToMs(getWindArray(data)[k], windUnitUI);
+        const T    = data.hourly.temperature_2m[k];
+        const prod = expectedProductionMWFromSheet(wMs);
+        windSum += wMs; tempSum += T; totalProdMW += prod;
+        rows.push([hour, wMs.toFixed(1), T.toFixed(1), prod.toFixed(3)]);
+      });
+      doc.autoTable({ startY:120, styles:{font:'helvetica',fontSize:10,cellPadding:6,halign:'center'}, headStyles:{fillColor:[243,244,246],textColor:20},
+        head:[['Hour','Wind Speed (m/s)','Temperature (°C)','Expected Production (MW)']], body:rows });
+      const y = doc.lastAutoTable.finalY || 120;
+      const avgW = rows.length? windSum/rows.length : 0; const avgT = rows.length? tempSum/rows.length : 0;
+      doc.setFont('helvetica','bold'); doc.text('Summary',margin,y+30);
+      doc.setFont('helvetica','normal'); doc.text(`Average wind speed (m/s): ${avgW.toFixed(2)}`, margin, y+50);
+      doc.text(`Average temperature (°C): ${avgT.toFixed(2)}`, margin, y+70);
+      doc.text(`Total expected production (MW): ${totalProdMW.toFixed(3)}`, margin, y+90);
+    });
+    const wDates = indices.map(i => data.daily.time[i]);
+    doc.save(`WeeklyForecast_${wDates[0]}_to_${wDates[6]}.pdf`);
+  }
+  window.generateWeeklyPDF = generateWeeklyPDF;
+
+  function exportWeeklyExcel(data, indices, windUnitUI){
+    if (!window.XLSX || !XLSX.utils || !XLSX.writeFile) { alert('مكتبة Excel غير متوفرة'); return; }
+    const wb = XLSX.utils.book_new();
+    const allRows = []; const merges = []; let currentRow = 0;
+    indices.forEach((dayIdx, dayNo) => {
+      const hoursIdx = hoursForDay(dayIdx, data.hourly.time).slice(0,24);
+      const dayISO   = data.daily.time[dayIdx];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+      const year     = dateObj.getFullYear();
+      const titleRow = new Array(26).fill(''); titleRow[0] = `Forecasted Output Of The Facility, RGWE ${year}`;
+      allRows.push(titleRow); merges.push({ s: { r: currentRow, c: 0 }, e: { r: currentRow, c: 25 } }); currentRow += 1;
+      const r1 = new Array(26).fill(''); const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+      r1[0] = niceDate; for(let c=1;c<=24;c++){ const k  = hoursIdx[c-1]; r1[c] = (typeof k==='number')? new Date(data.hourly.time[k]).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : ''; }
+      allRows.push(r1); currentRow += 1;
+      const windRow = new Array(26).fill(''); windRow[0] = 'Expected Wind Speed, m/s'; let windSum=0;
+      hoursIdx.forEach((k,i)=>{ const wMs = convertToMs(getWindArray(data)[k], windUnitUI); windRow[i+1] = Number.isFinite(wMs) ? Math.round(wMs) : ''; windSum += wMs; });
+      windRow[25] = hoursIdx.length? +(windSum/hoursIdx.length).toFixed(2) : ''; allRows.push(windRow); currentRow += 1;
+      const availRow = new Array(26).fill(''); availRow[0] = 'Availability %'; for (let i = 0; i < 24; i++) { availRow[i+1] = 98; } availRow[25] = 98; allRows.push(availRow); currentRow += 1;
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW'; let powerSum=0;
+      hoursIdx.forEach((k,i)=>{ const wMs = convertToMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProductionMWFromSheet(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += prodMW; });
+      powerRow[25] = +powerSum.toFixed(3); allRows.push(powerRow); currentRow += 1;
+      if (dayNo !== indices.length - 1) { allRows.push(new Array(26).fill('')); currentRow += 1; }
+    });
+    const ws = XLSX.utils.aoa_to_sheet(allRows); ws['!merges'] = (ws['!merges'] || []).concat(merges);
+    const rows = allRows.length, cols = 26;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c }); if (!ws[addr]) continue;
+        const cell = ws[addr]; cell.s = cell.s || {};
+        cell.s.border = { top: {style:'thick', color:{rgb:'000000'}}, bottom: {style:'thick', color:{rgb:'000000'}}, left: {style:'thick', color:{rgb:'000000'}}, right: {style:'thick', color:{rgb:'000000'}} };
+        const val = cell.v; const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isTimeLike = (typeof val === 'string') && /^\d{2}:\d{2}$/.test(val.trim());
+        if (isNumeric || isTimeLike) { cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { horizontal: 'center', vertical: 'center' }); }
+      }
+    }
+    const wDates = indices.map(i => data.daily.time[i]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Weekly');
+    XLSX.writeFile(wb, `WeeklyForecast_${wDates[0]}_to_${wDates[6]}_ONE_SHEET.xlsx`);
+  }
+  window.exportWeeklyExcel = exportWeeklyExcel;
+
+  (function hookWeekly(){
+    const _origHandleFetch = window.handleFetch;
+    window.handleFetch = async function(){
+      if (typeof _origHandleFetch === 'function') { await _origHandleFetch(); }
+      try { if (window.__lastForecast?.data) { renderWeeklyPanel(window.__lastForecast.data); } } catch(e){ console.error(e); }
+    };
+  })();
+})();
+</script>
+<script>
+// === Override: Weekly Excel (single sheet) — one title, add temperature row, thin borders ===
+(function(){
+  function exportWeeklyExcel(data, indices, windUnitUI){
+    if (!window.XLSX || !XLSX.utils || !XLSX.writeFile) { alert('مكتبة Excel غير متوفرة'); return; }
+    const wb = XLSX.utils.book_new();
+
+    const allRows = [];
+    const merges = [];
+
+    // ---- Global title ONCE at the very top ----
+    const yearAny = new Date((data.daily.time[indices[0]]||'') + 'T00:00:00').getFullYear();
+    const globalTitle = new Array(26).fill('');
+    globalTitle[0] = `Forecasted Output Of The Facility, RGWE ${yearAny}`;
+    allRows.push(globalTitle);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 25 } });
+    let currentRow = 1;
+
+    // ---- Per-day blocks (no repeating title per day) ----
+    indices.forEach((dayIdx, dayNo) => {
+      const hoursIdx = (function(){
+        // Reuse existing helper if present
+        try { if (window.hoursForDay) return window.hoursForDay(dayIdx, data.hourly.time).slice(0,24); } catch(e){}
+        const dateISO = data.daily.time[dayIdx];
+        const idxs = [];
+        for (let k=0; k<data.hourly.time.length; k++){
+          if (data.hourly.time[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+        }
+        return idxs;
+      })();
+
+      const dayISO   = data.daily.time[dayIdx];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+
+      // Row: Date + 24 times
+      const r1 = new Array(26).fill('');
+      const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+      r1[0] = niceDate;
+      for (let c=1; c<=24; c++){
+        const k = hoursIdx[c-1];
+        r1[c] = (typeof k==='number')
+          ? new Date(data.hourly.time[k]).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
+          : '';
+      }
+      allRows.push(r1); currentRow += 1;
+
+      // Row: Expected Wind Speed, m/s  + avg at last col
+      function toMs(v,u){
+        try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+        if (!Number.isFinite(v)) return NaN;
+        return u==='kn' || u==='knots' ? v*0.514444 : (u==='kmh' ? v/3.6 : (u==='mph' ? v*0.44704 : v));
+      }
+      const windRow = new Array(26).fill(''); windRow[0] = 'Expected Wind Speed, m/s';
+      let windSum = 0;
+      hoursIdx.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); windRow[i+1] = Number.isFinite(wMs) ? Math.round(wMs) : ''; windSum += (Number.isFinite(wMs)? wMs : 0); });
+      const windCount = hoursIdx.filter(k=> typeof k === 'number').length || 1;
+      windRow[25] = +(windSum / windCount).toFixed(2);
+      allRows.push(windRow); currentRow += 1;
+
+      // Row: Expected Temperature, °C  + avg at last col (NEW)
+      const tempRow = new Array(26).fill(''); tempRow[0] = 'Expected Temperature, °C';
+      let tempSum = 0, tempCount = 0;
+      hoursIdx.forEach((k,i)=>{
+        const T = data.hourly.temperature_2m[k];
+        const v = Number.isFinite(T) ? +T : '';
+        tempRow[i+1] = v;
+        if (Number.isFinite(T)) { tempSum += T; tempCount++; }
+      });
+      tempRow[25] = tempCount ? +(tempSum/tempCount).toFixed(2) : '';
+      allRows.push(tempRow); currentRow += 1;
+
+      // Row: Availability %
+      const availRow = new Array(26).fill('');
+      availRow[0] = 'Availability %';
+      for (let i = 0; i < 24; i++) { availRow[i+1] = 98; }
+      availRow[25] = 98;
+      allRows.push(availRow); currentRow += 1;
+
+      // Row: Expected Production, MW  + daily total at last col
+      function expectedProd(w_ms){
+        try{ if(window.expectedProductionMWFromSheet) return window.expectedProductionMWFromSheet(w_ms); }catch(e){}
+        const cut=3,rated=12,cap=100; if(!Number.isFinite(w_ms)||w_ms<=cut) return 0; if(w_ms>=rated) return cap; const n=(w_ms-cut)/(rated-cut); return Math.pow(n,3)*cap;
+      }
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW';
+      let powerSum=0;
+      hoursIdx.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProd(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += (Number.isFinite(prodMW)? prodMW : 0); });
+      powerRow[25] = +powerSum.toFixed(3);
+      allRows.push(powerRow); currentRow += 1;
+
+      // Blank spacer row between days
+      if (dayNo !== indices.length - 1) { allRows.push(new Array(26).fill('')); currentRow += 1; }
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws['!merges'] = (ws['!merges'] || []).concat(merges);
+
+    // === THIN borders for all cells (instead of thick) ===
+    const rows = allRows.length, cols = 26;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) continue;
+        const cell = ws[addr]; cell.s = cell.s || {};
+        cell.s.border = {
+          top: {style:'thin', color:{rgb:'000000'}},
+          bottom: {style:'thin', color:{rgb:'000000'}},
+          left: {style:'thin', color:{rgb:'000000'}},
+          right: {style:'thin', color:{rgb:'000000'}}
+        };
+        const val = cell.v;
+        const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isTimeLike = (typeof val === 'string') && /^\d{2}:\d{2}$/.test(val.trim());
+        if (isNumeric || isTimeLike || r===0) {
+          cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { horizontal: 'center', vertical: 'center' });
+        }
+      }
+    }
+    // Style the single global title row (bold + larger font)
+    const titleAddr = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (ws[titleAddr]){
+      ws[titleAddr].s = ws[titleAddr].s || {};
+      ws[titleAddr].s.font = Object.assign({}, ws[titleAddr].s.font || {}, { bold: true, sz: 14 });
+      ws[titleAddr].s.alignment = Object.assign({}, ws[titleAddr].s.alignment || {}, { horizontal: 'center', vertical: 'center' });
+    }
+
+    const wDates = indices.map(i => data.daily.time[i]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Weekly');
+    XLSX.writeFile(wb, `WeeklyForecast_${wDates[0]}_to_${wDates[6]}_ONE_SHEET.xlsx`);
+  }
+
+  // expose override
+  window.exportWeeklyExcel = exportWeeklyExcel;
+})();
+</script>
+<script>
+// === Override v3: Weekly Excel (one top time header, no spacer rows, thin borders) ===
+(function(){
+  function exportWeeklyExcel(data, indices, windUnitUI){
+    if (!window.XLSX || !XLSX.utils || !XLSX.writeFile) { alert('مكتبة Excel غير متوفرة'); return; }
+    const wb = XLSX.utils.book_new();
+    const allRows = [];
+    const merges = [];
+
+    // Global title once
+    const yearAny = new Date((data.daily.time[indices[0]]||'') + 'T00:00:00').getFullYear();
+    const titleRow = new Array(26).fill('');
+    titleRow[0] = `Forecasted Output Of The Facility, RGWE ${yearAny}`;
+    allRows.push(titleRow);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 25 } });
+
+    // Single time header row
+    const headerRow = new Array(26).fill('');
+    headerRow[0] = 'Date / Metric';
+    for (let h=0; h<24; h++){ headerRow[1+h] = `${String(h).padStart(2,'0')}:00`; }
+    headerRow[25] = 'Avg / Total';
+    allRows.push(headerRow);
+
+    function toMs(v,u){
+      try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+      if (!Number.isFinite(v)) return NaN;
+      return u==='kn' || u==='knots' ? v*0.514444 : (u==='kmh' ? v/3.6 : (u==='mph' ? v*0.44704 : v));
+    }
+    function expectedProd(w_ms){
+      try{ if(window.expectedProductionMWFromSheet) return window.expectedProductionMWFromSheet(w_ms); }catch(e){}
+      const cut=3,rated=12,cap=100; if(!Number.isFinite(w_ms)||w_ms<=cut) return 0; if(w_ms>=rated) return cap; const n=(w_ms-cut)/(rated-cut); return Math.pow(n,3)*cap;
+    }
+    function hoursForDay(dayIdx, hourlyTimes){
+      try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes).slice(0,24); }catch(e){}
+      const dateISO = data.daily.time[dayIdx];
+      const idxs = [];
+      for (let k=0; k<data.hourly.time.length; k++){
+        if (data.hourly.time[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+      }
+      return idxs;
+    }
+
+    // Append per-day blocks: 4 rows each (wind, temp, avail, production), no blank rows
+    indices.forEach((dayIdx) => {
+      const hoursIdx = hoursForDay(dayIdx, data.hourly.time);
+      const dayISO   = data.daily.time[dayIdx];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+      const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+
+      // Wind
+      const windRow = new Array(26).fill(''); windRow[0] = `${niceDate} – Expected Wind Speed, m/s`;
+      let windSum=0, windCount=0;
+      hoursIdx.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const v = Number.isFinite(wMs)? Math.round(wMs) : ''; windRow[i+1]=v; if(Number.isFinite(wMs)){ windSum+=wMs; windCount++; } });
+      windRow[25] = windCount ? +(windSum/windCount).toFixed(2) : ''; allRows.push(windRow);
+
+      // Temperature
+      const tempRow = new Array(26).fill(''); tempRow[0] = 'Expected Temperature, °C';
+      let tempSum=0, tempCount=0;
+      hoursIdx.forEach((k,i)=>{ const T = data.hourly.temperature_2m[k]; tempRow[i+1] = Number.isFinite(T) ? +T : ''; if(Number.isFinite(T)){ tempSum+=T; tempCount++; } });
+      tempRow[25] = tempCount ? +(tempSum/tempCount).toFixed(2) : ''; allRows.push(tempRow);
+
+      // Availability
+      const availRow = new Array(26).fill(''); availRow[0] = 'Availability %';
+      for (let i=0;i<24;i++) availRow[i+1] = 98;
+      availRow[25] = 98; allRows.push(availRow);
+
+      // Production
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW';
+      let powerSum=0;
+      hoursIdx.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProd(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += (Number.isFinite(prodMW)? prodMW : 0); });
+      powerRow[25] = +powerSum.toFixed(3); allRows.push(powerRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws['!merges'] = (ws['!merges'] || []).concat(merges);
+
+    // Thin borders and alignment
+    const rows = allRows.length, cols = 26;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) continue;
+        const cell = ws[addr]; cell.s = cell.s || {};
+        cell.s.border = {
+          top: {style:'thin', color:{rgb:'000000'}},
+          bottom: {style:'thin', color:{rgb:'000000'}},
+          left: {style:'thin', color:{rgb:'000000'}},
+          right: {style:'thin', color:{rgb:'000000'}}
+        };
+        const val = cell.v;
+        const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isTimeLike = (typeof val === 'string') && /^\\d{2}:\\d{2}$/.test(val.trim());
+        if (isNumeric || isTimeLike || r<=1) {
+          cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { horizontal: 'center', vertical: 'center' });
+        }
+        if (r===0){ // title row bold big
+          cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true, sz: 14 });
+        }
+        if (r===1){ // header row bold\n          cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true });\n        }\n      }\n    }\n\n    const wDates = indices.map(i => data.daily.time[i]);\n    XLSX.utils.book_append_sheet(wb, ws, 'Weekly');\n    XLSX.writeFile(wb, `WeeklyForecast_${wDates[0]}_to_${wDates[6]}_ONE_SHEET.xlsx`);\n  }\n\n  window.exportWeeklyExcel = exportWeeklyExcel;\n})();\n</script>\n
+
+<script>
+/* === Override v4 (forced) — Weekly Excel:
+   - Single time header row at top (00:00..23:00)
+   - All days appended into ONE continuous table (no blank rows)
+   - Thin borders
+   - Hard-bind the Weekly Excel button at capture phase to ensure using this function
+*/
+(function(){
+  // Helpers (local, so we don't depend on earlier scopes)
+  function ymdLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+  function nextSunday(from = new Date()){ const day=from.getDay(); const delta=((7-day)%7)||7; const d=new Date(from); d.setHours(0,0,0,0); d.setDate(d.getDate()+delta); return d; }
+  function getNextWeekDates(){ const start=nextSunday(new Date()); const days=[]; for(let i=0;i<7;i++){ const di=new Date(start); di.setDate(start.getDate()+i); days.push(ymdLocal(di)); } return days; }
+  function indicesForDates(dates, dailyTimes){ return dates.map(d => dailyTimes.indexOf(d)); }
+  function toMs(v,u){
+    try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+    if (!Number.isFinite(v)) return NaN;
+    return u==='kn' || u==='knots' ? v*0.514444 : (u==='kmh' ? v/3.6 : (u==='mph' ? v*0.44704 : v));
+  }
+  function expectedProd(w_ms){
+    try{ if(window.expectedProductionMWFromSheet) return window.expectedProductionMWFromSheet(w_ms); }catch(e){}
+    const cut=3,rated=12,cap=100; if(!Number.isFinite(w_ms)||w_ms<=cut) return 0; if(w_ms>=rated) return cap; const n=(w_ms-cut)/(rated-cut); return Math.pow(n,3)*cap;
+  }
+  function hoursForDay(dayIdx, hourlyTimes){
+    try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes).slice(0,24); }catch(e){}
+    const dateISO = window.__lastForecast?.data?.daily?.time?.[dayIdx];
+    const idxs = [];
+    for (let k=0; k<hourlyTimes.length; k++){
+      if (hourlyTimes[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+    }
+    return idxs;
+  }
+
+  function exportWeeklyExcelV4(data, indices, windUnitUI){
+    if (!window.XLSX || !XLSX.utils || !XLSX.writeFile) { alert('مكتبة Excel غير متوفرة'); return; }
+    const wb = XLSX.utils.book_new();
+    const allRows = [];
+    const merges = [];
+
+    // Global title once
+    const yearAny = new Date((data.daily.time[indices[0]]||'') + 'T00:00:00').getFullYear();
+    const titleRow = new Array(26).fill('');
+    titleRow[0] = `Forecasted Output Of The Facility, RGWE ${yearAny}`;
+    allRows.push(titleRow);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 25 } });
+
+    // Single time header row
+    const headerRow = new Array(26).fill('');
+    headerRow[0] = 'Date / Metric';
+    for (let h=0; h<24; h++){ headerRow[1+h] = `${String(h).padStart(2,'0')}:00`; }
+    headerRow[25] = 'Avg / Total';
+    allRows.push(headerRow);
+
+    // Append per-day blocks: 4 rows (wind, temp, avail, production) — NO blank rows
+    indices.forEach((dayIdx) => {
+      const idxs = hoursForDay(dayIdx, data.hourly.time);
+      const dayISO   = data.daily.time[dayIdx];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+      const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+
+      // Wind
+      const windRow = new Array(26).fill(''); windRow[0] = `${niceDate} – Expected Wind Speed, m/s`;
+      let windSum=0, windCount=0;
+      idxs.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const v = Number.isFinite(wMs)? Math.round(wMs) : ''; windRow[i+1]=v; if(Number.isFinite(wMs)){ windSum+=wMs; windCount++; } });
+      windRow[25] = windCount ? +(windSum/windCount).toFixed(2) : ''; allRows.push(windRow);
+
+      // Temperature
+      const tempRow = new Array(26).fill(''); tempRow[0] = 'Expected Temperature, °C';
+      let tempSum=0, tempCount=0;
+      idxs.forEach((k,i)=>{ const T = data.hourly.temperature_2m[k]; tempRow[i+1] = Number.isFinite(T) ? +T : ''; if(Number.isFinite(T)){ tempSum+=T; tempCount++; } });
+      tempRow[25] = tempCount ? +(tempSum/tempCount).toFixed(2) : ''; allRows.push(tempRow);
+
+      // Availability
+      const availRow = new Array(26).fill(''); availRow[0] = 'Availability %';
+      for (let i=0;i<24;i++) availRow[i+1] = 98;
+      availRow[25] = 98; allRows.push(availRow);
+
+      // Production
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW';
+      let powerSum=0;
+      idxs.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProd(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += (Number.isFinite(prodMW)? prodMW : 0); });
+      powerRow[25] = +powerSum.toFixed(3); allRows.push(powerRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws['!merges'] = (ws['!merges'] || []).concat(merges);
+
+    // Thin borders & alignment
+    const rows = allRows.length, cols = 26;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) continue;
+        const cell = ws[addr]; cell.s = cell.s || {};
+        cell.s.border = {
+          top: {style:'thin', color:{rgb:'000000'}},
+          bottom: {style:'thin', color:{rgb:'000000'}},
+          left: {style:'thin', color:{rgb:'000000'}},
+          right: {style:'thin', color:{rgb:'000000'}}
+        };
+        const val = cell.v;
+        const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isTimeLike = (typeof val === 'string') && /^\\d{2}:\\d{2}$/.test(val?.toString().trim());
+        if (isNumeric || isTimeLike || r<=1) {
+          cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { horizontal: 'center', vertical: 'center' });
+        }
+        if (r===0){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true, sz: 14 }); }
+        if (r===1){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true }); }
+        if (r>=2 && c===0){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true }); }
+      }
+    }
+
+    const wDates = indices.map(i => data.daily.time[i]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Weekly');
+    XLSX.writeFile(wb, `WeeklyForecast_${wDates[0]}_to_${wDates[6]}_ONE_TABLE.xlsx`);
+  }
+
+  // Make globally accessible
+  window.exportWeeklyExcelV4 = exportWeeklyExcelV4;
+  window.exportWeeklyExcel   = exportWeeklyExcelV4; // override any previous one
+
+  // Hard-bind the button at capture phase so we bypass older handlers
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest && ev.target.closest('#weeklyXlsBtn');
+    if (!btn) return;
+    ev.stopImmediatePropagation && ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    const store = window.__lastForecast;
+    const data = store && store.data;
+    if(!data || !data.daily || !data.daily.time){ alert('لم يتم جلب البيانات بعد. اضغط \"تحديث التنبؤ\" أولًا.'); return; }
+
+    const weekDates = getNextWeekDates();
+    const idxList = indicesForDates(weekDates, data.daily.time);
+    if (idxList.some(i=> i===-1)) { alert('بيانات الأسبوع القادم غير مكتملة. تأكد أن forecast_days=14 ثم أعد الجلب.'); return; }
+
+    window.exportWeeklyExcelV4(data, idxList, store.windUnit);
+  }, true);
+})();
+</script>
+<script>
+(function(){
+  function toMs(v,u){
+    try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+    if (!Number.isFinite(v)) return NaN;
+    return u==='kn'||u==='knots'? v*0.514444 : (u==='kmh'? v/3.6 : (u==='mph'? v*0.44704 : v));
+  }
+  function hoursForDaySafe(dayIdx, hourlyTimes){
+    try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes).slice(0,24); }catch(e){}
+    const dateISO = window.__lastForecast?.data?.daily?.time?.[dayIdx];
+    const idxs = [];
+    for (let k=0; k<hourlyTimes.length; k++){
+      if (hourlyTimes[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+    }
+    return idxs;
+  }
+  function escHtml(s){ return String(s).replace(/[&<>"]/g, m=>({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[m])); }
+
+  function buildDayEmailHTML(index, data, windUnitUI){
+    const dayISO = data.daily.time[index];
+    const dt0 = new Date(dayISO + 'T00:00:00');
+    const niceDate = dt0.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+
+    const hIdx = hoursForDaySafe(index, data.hourly.time);
+    const times = [];
+    for (let c=0;c<24;c++){
+      const k = hIdx[c];
+      times.push(typeof k==='number' ? new Date(data.hourly.time[k]).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '');
+    }
+
+    let windSum = 0, windCnt = 0;
+    const windRow = [];
+    for (let i=0;i<24;i++){
+      const k = hIdx[i]; const w = toMs(getWindArray(data)[k], windUnitUI);
+      const cell = Number.isFinite(w) ? Math.round(w) : '';
+      windRow.push(cell);
+      if (Number.isFinite(w)){ windSum += w; windCnt++; }
+    }
+    const windAvg = windCnt ? (windSum/windCnt).toFixed(2) : '';
+
+    const availRow = Array.from({length:24}, ()=>98);
+
+    let pSum = 0;
+    const prodRow = [];
+    for (let i=0;i<24;i++){
+      const k = hIdx[i]; const w = toMs(getWindArray(data)[k], windUnitUI);
+      const prodMW = (typeof window.expectedProductionMWFromSheet==='function') ? window.expectedProductionMWFromSheet(w) : 0;
+      const v = Number.isFinite(prodMW) ? (+prodMW).toFixed(3) : '';
+      prodRow.push(v);
+      if (Number.isFinite(prodMW)) pSum += prodMW;
+    }
+    const prodTotal = pSum.toFixed(3);
+
+    const cell = 'style="border:1px solid #000;padding:8px;text-align:center;font:14px Arial,Helvetica,sans-serif"';
+    const cellL= 'style="border:1px solid #000;padding:8px;text-align:left;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    const head = 'style="border:1px solid #000;padding:8px;text-align:center;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    const title = 'style="text-align:center; text-align:center; padding:10px 6px;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    const wrap = 'style="border-collapse:collapse;width:100%;max-width:1300px"';
+
+    const tHeader = `
+      <tr>
+        <td ${cellL}>${escHtml(niceDate)}</td>
+        ${times.map(t=>`<td ${head}>${escHtml(t)}</td>`).join('')}
+        <td ${head}>Avg / Total</td>
+      </tr>`;
+
+    return `
+      <div style="font:13px Arial,Helvetica,sans-serif;color:#000"><p style="margin:0 0 12px 0; white-space:pre-line">Dear all,\n\nAttached below is the RGWE forecasted output of the facility for your appreciated interest.</p>
+        <div ${title}>Forecasted Output Of The Facility, RGWE 2025</div>
+        <table ${wrap}>
+          ${tHeader}
+          <tr><td ${cellL}>Expected Wind Speed, m/s</td>${windRow.map(v=>`<td ${cell}>${escHtml(v)}</td>`).join('')}<td ${cell}>${escHtml(windAvg)}</td></tr>
+          <tr><td ${cellL}>Availability %</td>${availRow.map(v=>`<td ${cell}>${v}</td>`).join('')}<td ${cell}>98</td></tr>
+          <tr><td ${cellL}>Expected Production, MW</td>${prodRow.map(v=>`<td ${cell}>${escHtml(v)}</td>`).join('')}<td ${cell}>${escHtml(prodTotal)}</td></tr>
+        </table>
+      </div>`;
+  }
+
+  function saveAsEml({subject, html, to='', cc=''}){
+    function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    const eml =
+      (to ? ('To: '+to+'
+') : '') +
+      'X-Unsent: 1
+' +
+      'Subject: '+subject+'
+' +
+      'MIME-Version: 1.0
+' +
+      'Content-Type: text/html; charset=UTF-8
+' +
+      'Content-Transfer-Encoding: base64
+
+' +
+      b64(html);
+    const blob = new Blob([eml], {type:'message/rfc822'});
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = subject.replace(/[^a-z0-9_\-]+/gi,'_') + '.eml';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 2000);
+  }
+
+  window.exportEmailEML = function(index, data, windUnitUI){
+    if(!data || !data.daily || !data.hourly){ alert('رجاءً حدِّث التنبؤ أولًا.'); return; }
+    const langEN = document.documentElement.lang === 'en';
+    const dayISO = data.daily.time[index];
+    const dt0 = new Date(dayISO + 'T00:00:00');
+    const niceDate = dt0.toLocaleDateString(langEN?'en-GB':'ar-EG',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+    const subject = 'Forecasted Output Of The Facility - RGWE';
+
+    const inpTo = document.getElementById('emailTo');
+      const toList = (inpTo && inpTo.value) ? inpTo.value.split(/[;,]/).map(s=>s.trim()).filter(Boolean) : (typeof window.__rgwe_getToList==='function' ? window.__rgwe_getToList() : []);
+      const toHeader = (toList && toList.length) ? toList.join(', ') : '';
+    const ccList = (typeof window.__rgwe_getCcList==='function') ? window.__rgwe_getCcList() : [];
+    const ccHeader = (ccList && ccList.length) ? ccList.join(', ') : '';
+
+    const html = buildDayEmailHTML(index, data, windUnitUI);
+    saveAsEml({subject, html, to: toHeader, cc: ccHeader});
+  };
+  };
+})();
+</script>
+<script>
+(function(){
+  // --- helpers added to improve reliability ---
+  function stripHtml(html){ const div=document.createElement('div'); div.innerHTML = html; return div.textContent || div.innerText || ''; }
+
+  async function copyHtmlToClipboard(html){
+    try{
+      if (navigator.clipboard && window.ClipboardItem){
+        const item = new ClipboardItem({
+          "text/html": new Blob([html], {type:"text/html"}),
+          "text/plain": new Blob([stripHtml(html)], {type:"text/plain"})
+        });
+        await navigator.clipboard.write([item]);
+        return true;
+      }else{
+        // fallback: execCommand
+        const div = document.createElement('div');
+        div.contentEditable = 'true';
+        div.style.position='fixed'; div.style.opacity='0'; div.style.pointerEvents='none';
+        document.body.appendChild(div);
+        div.innerHTML = html;
+        const range = document.createRange();
+        range.selectNodeContents(div);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(div);
+        return ok;
+      }
+    }catch(e){ console.warn('Clipboard copy failed', e); return false; }
+  }
+
+  function openOWACompose(subject){
+    const toList = (typeof window.__rgwe_getToList==='function') ? window.__rgwe_getToList() : [];
+    const toParam = encodeURIComponent(toList.join(';'));
+    const url = 'https://outlook.office.com/mail/deeplink/compose?to=' + toParam + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent('(Paste the table here)…');
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function openMailto(subject){
+    window.location.href = 'mailto:?subject=' + encodeURIComponent(subject);
+  }
+
+  // Monkey-patch exportEmailEML to include robust fallback sequence
+  if (window.exportEmailEML){
+    const _orig = window.exportEmailEML;
+    window.exportEmailEML = async function(index, data, windUnitUI){
+      try{
+        _orig(index, data, windUnitUI); // try EML method first
+      }catch(e){
+        console.warn('EML export failed:', e);
+      }
+      // Always also try to copy HTML and open compose, to satisfy strict environments
+      try{
+        // We need the same HTML used by _orig; rebuild quickly by calling internal builder if available
+        let html = null;
+        if (typeof buildDayEmailHTML === 'function') {
+          html = buildDayEmailHTML(index, data, windUnitUI);
+        }
+        if (html){
+          const ok = await copyHtmlToClipboard(html);
+          const subject = 'Forecasted Output Of The Facility - RGWE';
+          // Prefer OWA compose (web) if available, otherwise fall back to mailto (desktop)
+          // openOWACompose(subject); // disabled to use Outlook draft via EML
+if (!ok){
+            setTimeout(()=>{
+              openMailto(subject);
+              alert('تم فتح نافذة الإيميل. إذا لم يظهر الجدول تلقائيًا، استخدم لصق (Ctrl+V) لإدراج الجدول المنسوخ.');
+            }, 400);
+          }else{
+            alert('تم نسخ الجدول بصيغة HTML. بعد فتح شاشة الإيميل، اضغط لصق (Ctrl+V) ليظهر الجدول.');
+          }
+        }
+      }catch(e){
+        console.warn('Fallback compose failed:', e);
+      }
+    };
+  }
+
+  // Improve saveAsEml to try open in new tab before download (for some browsers)
+  if (typeof saveAsEml === 'function'){
+    const _save = saveAsEml;
+    window.saveAsEml = function(opts){
+      try{
+        // call original to construct blob+download
+        _save(opts);
+      }catch(e){ console.warn('saveAsEml download failed', e); }
+      try{
+        // additionally try navigating to object URL (some browsers will prompt app)
+        const eml =
+          'Subject: ' + (opts.subject||'') + '\\r\\n' +
+          'MIME-Version: 1.0\\r\\n' +
+          'Content-Type: text/html; charset=UTF-8\\r\\n' +
+          'Content-Transfer-Encoding: base64\\r\\n\\r\\n' +
+          (function(){ try{ return btoa(unescape(encodeURIComponent(opts.html||''))); }catch(e){ return ''; } })();
+        const blob = new Blob([eml], {type:'message/rfc822'});
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank');
+        setTimeout(()=>URL.revokeObjectURL(url), 60000);
+      }catch(e){ console.warn('Opening EML in new tab failed', e); }
+    };
+  }
+})();
+</script>
+<script>
+(function(){
+  function parseToList(raw){
+    if (!raw) return [];
+    return raw.split(/[;,]/).map(s=>s.trim()).filter(Boolean);
+  }
+  function normalizeToHeader(list){ return list.join(', '); } // for EML
+  function normalizeToOWA(list){ return list.join(';'); } // for OWA
+  function normalizeToMailto(list){ return list.join(','); } // for mailto
+
+  function setToValue(v){ try{ localStorage.setItem('rgwe_to', v || ''); }catch(e){} }
+  function getToValue(){ try{ return localStorage.getItem('rgwe_to') || ''; }catch(e){ return ''; } }
+
+  const DEFAULT_TO = "tarikeng@yahoo.com; roody_rfr2020@yahoo.com; Rasha_boot@yahoo.com; NECC <necc.2@hotmail.com>; hgadsuez@yahoo.com; hamidaelsanea@gmail.com; Eng.elharirya@gmail.com; eman_eetc@yahoo.com; control.system.necc@gmail.com; ashraflotfih@gmail.com; eng_abdelfatah73@yahoo.com";
+
+  window.__rgwe_getToList = function(){
+    const inp = document.getElementById('emailTo');
+    const raw = inp && inp.value ? inp.value : getToValue();
+    return parseToList(raw);
+  };
+  window.__rgwe_getCcList = function(){
+    const inp = document.getElementById('emailCc');
+    const stored = (function(){ try{ return localStorage.getItem('rgwe_cc') || ''; }catch(e){ return ''; } })();
+    const raw = inp && inp.value ? inp.value : stored;
+    return parseToList(raw);
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const inp = document.getElementById('emailTo');
+    if (inp){
+      if (!getToValue()) { try{ localStorage.setItem('rgwe_to', DEFAULT_TO); }catch(e){} }
+      if (!getToValue() && inp.value) { try{ localStorage.setItem('rgwe_to', inp.value); }catch(e){} }
+      inp.value = getToValue() || inp.value;
+      inp.addEventListener('change', ()=> setToValue(inp.value));
+      inp.addEventListener('blur', ()=> setToValue(inp.value));
+    }
+  });
+})();
+</script>
+<script>
+// === Weekly Email Exporter — v6 (standalone, preserve Excel button) ===
+(function(){
+  function saveAsEmlWeekly(params){
+    try{
+      var subject = params.subject || '';
+      var html    = params.html || '';
+      var to      = params.to || '';
+      var cc      = params.cc || '';
+      var headers = [
+        'X-Unsent: 1',
+        (to ? 'To: ' + to : ''),
+        (cc ? 'Cc: ' + cc : ''),
+        'Subject: ' + subject,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'Content-Transfer-Encoding: base64'
+      ].filter(Boolean).join('\r\n');
+      function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+      var eml = headers + '\r\n\r\n' + b64(html);
+      try{
+        var blob = new Blob([eml], {type:'message/rfc822'});
+        var url  = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'RGWE_weekly_forecast.eml';
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1200);
+      }catch(e){
+        var a2 = document.createElement('a');
+        a2.href = 'data:message/rfc822;charset=utf-8,' + encodeURIComponent(eml);
+        a2.download = 'RGWE_weekly_forecast.eml';
+        document.body.appendChild(a2); a2.click(); a2.remove();
+      }
+    }catch(e){ alert('EML save failed (v6): ' + e.message); }
+  }
+
+  function esc(s){ return String(s==null? '' : s).replace(/&/,'&amp;').replace(/</,'&lt;').replace(/>/,'&gt;'); }
+
+  function toMsLocal(v,u){
+    if (typeof v!=='number' || !isFinite(v)) return NaN;
+    u = (u||'').toLowerCase();
+    if (u==='kn'||u==='kts'||u==='knot'||u==='knots') return v*0.514444;
+    if (u==='kmh'||u==='km/h') return v/3.6;
+    if (u==='mph') return v*0.44704;
+    return v;
+  }
+
+  function buildWeekly(indices, data, windUnitUI){
+    var yearAny = new Date((data.daily.time[indices[0]]||'') + 'T00:00:00').getFullYear();
+    var cell  = 'style="border:1px solid #000;padding:8px;text-align:center;font:14px Arial,Helvetica,sans-serif"';
+    var cellL = 'style="border:1px solid #000;padding:8px;text-align:left;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    var head  = 'style="border:1px solid #000;padding:8px;text-align:center;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    var title = 'style="text-align:center; padding:10px 6px;font:16px Arial,Helvetica,sans-serif;font-weight:bold;color:#000"';
+    var wrap  = 'style="border-collapse:collapse;width:100%;max-width:1300px"';
+
+    var blocks = [];
+    for (var h=0; h<indices.length; h++){
+      var index = indices[h];
+      var dayISO = data.daily.time[index];
+      var dt0    = new Date(dayISO + 'T00:00:00');
+      var nice   = dt0.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'});
+      nice = nice.split('/').join('-');
+
+      var hIdx = [];
+      for (var k=0; k<data.hourly.time.length; k++){
+        var t = data.hourly.time[k];
+        if (t && t.indexOf(dayISO)===0){ hIdx.push(k); if (hIdx.length===24) break; }
+      }
+
+      var times = [];
+      for (var c=0;c<24;c++){
+        var hk = hIdx[c];
+        times.push(typeof hk==='number' ? new Date(data.hourly.time[hk]).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '');
+      }
+
+      var wSum=0, wCnt=0, windRow=[];
+      for (var i=0;i<24;i++){
+        var k1=hIdx[i]; var w=toMsLocal(getWindArray(data)[k1], windUnitUI);
+        var v=(isFinite(w)? Math.round(w): '');
+        windRow.push(v); if (isFinite(w)){ wSum+=w; wCnt++; }
+      }
+      var wAvg = wCnt? (wSum/wCnt).toFixed(2) : '';
+
+      var tSum=0, tCnt=0, tempRow=[];
+      for (var j=0;j<24;j++){
+        var k2=hIdx[j]; var T=data.hourly.temperature_2m[k2];
+        var v2=(isFinite(T)? (+T).toFixed(1): '');
+        tempRow.push(v2); if (isFinite(T)){ tSum+=T; tCnt++; }
+      }
+      var tAvg = tCnt? (tSum/tCnt).toFixed(2) : '';
+
+      var avail = 98;
+      try{ var availInp = document.getElementById('avail'); if (availInp) { var aVal = parseFloat(availInp.value); if (!isNaN(aVal)) avail = aVal; } }catch(e){}
+      var availRow = new Array(24).fill(avail);
+
+      var pSum=0, prodRow=[];
+      for (var m=0;m<24;m++){
+        var k3=hIdx[m]; var w3=toMsLocal(getWindArray(data)[k3], windUnitUI);
+        var prodMW = (typeof window.expectedProductionMWFromSheet==='function') ? window.expectedProductionMWFromSheet(w3) : 0;
+        var pv = (isFinite(prodMW)? (+prodMW).toFixed(3): '');
+        prodRow.push(pv); if (isFinite(prodMW)) pSum += prodMW;
+      }
+      var pTot = pSum.toFixed(3);
+
+      blocks.push(
+        '<tr><td '+cellL+'>'+esc(nice)+'</td>'+
+        times.map(function(t){return '<td '+head+'>'+esc(t)+'</td>';}).join('')+
+        '<td '+head+'>Avg / Total</td></tr>'+
+        '<tr><td '+cellL+'>Expected Wind Speed, m/s</td>'+windRow.map(function(v){return '<td '+cell+'>'+esc(v)+'</td>';}).join('')+'<td '+cell+'>'+esc(wAvg)+'</td></tr>'+
+        '<tr><td '+cellL+'>Expected Temperature, °C</td>'+tempRow.map(function(v){return '<td '+cell+'>'+esc(v)+'</td>';}).join('')+'<td '+cell+'>'+esc(tAvg)+'</td></tr>'+
+        '<tr><td '+cellL+'>Availability %</td>'+availRow.map(function(){return '<td '+cell+'>'+esc(avail)+'</td>';}).join('')+'<td '+cell+'>'+esc(avail)+'</td></tr>'+
+        '<tr><td '+cellL+'>Expected Production, MW</td>'+prodRow.map(function(v){return '<td '+cell+'>'+esc(v)+'</td>';}).join('')+'<td '+cell+'>'+esc(pTot)+'</td></tr>'
+      );
+    }
+
+    return ''+
+      '<div style="font:13px Arial,Helvetica,sans-serif;color:#000"><p style="margin:0 0 12px 0; white-space:pre-line">Dear all,\n\nAttached below is the RGWE forecasted output of the facility for your appreciated interest.</p>'+
+      '<div '+title+'>Forecasted Output Of The Facility, RGWE 2025</div>'+
+      '<table '+wrap+'>'+
+      blocks.join('')+
+      '</table>'+
+      '</div>';
+  }
+
+  function computeIndices(data){
+    try{
+      if (typeof window.getNextWeekDates==='function' && typeof window.indicesForDates==='function'){
+        var weekDates = window.getNextWeekDates();
+        var idx = window.indicesForDates(weekDates, data.daily.time);
+        if (Array.isArray(idx) && idx.length===7 && idx.every(function(z){return z>=0;})) return idx;
+      }
+    }catch(e){}
+    var dailyDates = data.daily.time || [];
+    var pad = function(n){ return String(n).padStart(2,'0'); };
+    var t = new Date();
+    var todayISO = [t.getFullYear(), pad(t.getMonth()+1), pad(t.getDate())].join('-');
+    var startIdx = dailyDates.findIndex(function(s){ return s >= todayISO; });
+    if (startIdx < 0) startIdx = 0;
+    var out = [];
+    for (var k= startIdx; k<dailyDates.length && out.length<7; k++) out.push(k);
+    return out;
+  }
+
+  window.exportWeeklyEmailEML = function(indices, data, windUnitUI){
+    try{
+      var lf = window.__lastForecast;
+      if (!lf || !lf.data || !lf.data.daily || !lf.data.hourly){ alert('رجاءً حدِّث التنبؤ أولًا.'); return; }
+      var dataObj = data || lf.data;
+      var idxList = (Array.isArray(indices) && indices.length===7) ? indices : computeIndices(dataObj);
+      if (!Array.isArray(idxList) || idxList.length !== 7 || idxList.some(function(i){return i<0;})){
+        alert('بيانات الأسبوع غير مكتملة.'); return;
+      }
+      var langEN = document.documentElement.lang === 'en';
+      var loc    = langEN ? 'en-GB' : 'ar-EG';
+      var startISO = dataObj.daily.time[idxList[0]];
+      var endISO   = dataObj.daily.time[idxList[6]];
+      var startD   = new Date(startISO + 'T00:00:00');
+      var endD     = new Date(endISO   + 'T00:00:00');
+      var niceRange = startD.toLocaleDateString(loc,{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}) +
+                      ' → ' +
+                      endD.toLocaleDateString(loc,{weekday:'long', day:'numeric', month:'numeric', year:'numeric'});
+      niceRange = niceRange.split('/').join('-');
+
+      var subject = langEN ? ('RGWE Weekly Forecast – ' + niceRange) : ('تنبؤ RGWE – الأسبوع ' + niceRange);
+
+      var inpTo  = document.getElementById('emailTo');
+      var toList = (inpTo && inpTo.value) ? inpTo.value.split(/[;,]/).map(function(s){return s.trim();}).filter(Boolean)
+                    : (typeof window.__rgwe_getToList==='function' ? window.__rgwe_getToList() : []);
+      var toHeader = (toList && toList.length) ? toList.join(', ') : '';
+      var ccList   = (typeof window.__rgwe_getCcList==='function') ? window.__rgwe_getCcList()
+                      : ((document.getElementById('emailCc') && document.getElementById('emailCc').value || '').split(/[;,]/).map(function(s){return s.trim();}).filter(Boolean));
+      var ccHeader = (ccList && ccList.length) ? ccList.join(', ') : '';
+
+      var html = buildWeekly(idxList, dataObj, lf.windUnit);
+      if (typeof window.saveAsEml === 'function'){
+        window.saveAsEml({ subject: 'Forecasted Output Of The Facility - RGWE', html:html, to:toHeader, cc:ccHeader});
+      } else {
+        saveAsEmlWeekly({subject: 'Forecasted Output Of The Facility - RGWE', html:html, to:toHeader, cc:ccHeader});
+      }
+    }catch(e){
+      alert('خطأ أثناء تجهيز الإيميل (weekly v6): ' + e.message);
+    }
+  };
+
+  function wireWeeklyButton(){
+    var btn = document.getElementById('weeklyEmailBtn');
+    if (btn){
+      btn.type = 'button';
+      btn.textContent = (document.documentElement.lang === 'en') ? 'Export as Email (Week)' : 'تصدير كإيميل للأسبوع';
+      btn.addEventListener('click', function(){
+        var lf = window.__lastForecast;
+        if (!lf || !lf.data || !lf.data.daily || !lf.data.hourly){
+          alert('رجاءً حدِّث التنبؤ أولًا.');
+          return;
+        }
+        window.exportWeeklyEmailEML([], lf.data, lf.windUnit);
+      });
+    }
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wireWeeklyButton);
+  } else {
+    wireWeeklyButton();
+  }
+})();
+// === End Weekly Email Exporter ===
+</script>
+<script>
+// === Wind height selector helpers ===
+(function(){
+  window.__windHeight = parseInt(localStorage.getItem('windHeight')||'80',10);
+  function currentWindHeight(){ return (window.__windHeight||80); }
+  window.getWindArray = function(data){
+    var h = currentWindHeight();
+    var key = 'wind_speed_' + h + 'm';
+    return (data && data.hourly && data.hourly[key]) ? data.hourly[key] : [];
+  };
+  function refreshAll(){
+    try{
+      var lf = window.__lastForecast;
+      if (!lf || !lf.data) return;
+      // re-render cards in current language
+      if (document.documentElement.lang === 'en'){
+        if (typeof renderCardsEN==='function') renderCardsEN(lf.data, lf.windUnit);
+      } else {
+        if (typeof renderCardsAR==='function') renderCardsAR(lf.data, lf.windUnit);
+      }
+    }catch(e){ console.warn('refreshAll err', e); }
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var sel = document.getElementById('windHeightSel');
+    if (sel){
+      // init value from storage
+      sel.value = String(currentWindHeight());
+      sel.addEventListener('change', function(e){
+        var v = parseInt(e.target.value,10);
+        if (!isFinite(v)) return;
+        window.__windHeight = v;
+        localStorage.setItem('windHeight', String(v));
+        refreshAll();
+      });
+    }
+  });
+})();
+// === End wind height selector helpers ===
+</script>
+<script>
+// === Weekly Email: start from NEXT SUNDAY (Sun->Sat) & match Excel indices ===
+(function(){
+  // 0) Capture indices used by the app's Excel exporter (if any) to ensure perfect match
+  try{
+    if (typeof window.exportWeeklyExcel === 'function' && !window.__weeklyExcelPatched){
+      const __orig = window.exportWeeklyExcel;
+      window.exportWeeklyExcel = function(data, idxList, windUnit){
+        try{ window.__weeklyLastIndices = Array.isArray(idxList) ? idxList.slice() : undefined; }catch(e){}
+        return __orig.apply(this, arguments);
+      };
+      window.__weeklyExcelPatched = true;
+    }
+  }catch(e){}
+
+  // 1) Compute next WEEK indices starting upcoming Sunday (if today is Sunday -> next week)
+  function computeNextWeekSundayIndices(dailyDatesISO){
+    if (!Array.isArray(dailyDatesISO) || !dailyDatesISO.length) return [];
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun ... 6=Sat
+    let daysUntilNextSunday = (7 - dow) % 7;
+    if (daysUntilNextSunday === 0) daysUntilNextSunday = 7; // push to next week if today is Sunday
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextSunday);
+    const pad = n => String(n).padStart(2,'0');
+    const target = [];
+    for (let i=0;i<7;i++){
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+      target.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+    }
+    // map to indices if all present
+    const idx = target.map(t => dailyDatesISO.indexOf(t));
+    if (idx.every(i => i>=0)) return idx;
+    // fallback: first 7 dates >= start
+    const startISO = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+    let startIdx = dailyDatesISO.findIndex(s => s >= startISO);
+    if (startIdx < 0) startIdx = 0;
+    const out = [];
+    for (let k=startIdx; k<dailyDatesISO.length && out.length<7; k++) out.push(k);
+    return out.length===7 ? out : [];
+  }
+
+  // 2) Override/augment existing weekly email export wiring to use our indices
+  function wireWeeklyEmailFix(){
+    const btn = document.getElementById('weeklyEmailBtn');
+    if (!btn) return;
+    // Avoid double-binding
+    if (btn.__weeklyFixed) return;
+    btn.__weeklyFixed = true;
+
+    btn.addEventListener('click', function(ev){
+      try{
+        const lf = window.__lastForecast;
+        if (!lf || !lf.data || !lf.data.daily || !lf.data.hourly){
+          alert('رجاءً حدِّث التنبؤ أولًا.');
+          return;
+        }
+        // Prefer indices captured from Excel (perfect match)
+        let idxList = Array.isArray(window.__weeklyLastIndices) ? window.__weeklyLastIndices.slice() : [];
+        if (!idxList || idxList.length !== 7 || idxList.some(i=>i<0)){
+          // Compute from NEXT SUNDAY → SATURDAY
+          idxList = computeNextWeekSundayIndices(lf.data.daily.time);
+        }
+        if (!idxList || idxList.length !== 7 || idxList.some(i=>i<0)){
+          alert('بيانات الأسبوع غير مكتملة.');
+          return;
+        }
+        // Call existing exporter with our indices
+        if (typeof window.exportWeeklyEmailEML === 'function'){
+          window.exportWeeklyEmailEML(idxList, lf.data, lf.windUnit);
+        } else {
+          alert('وظيفة تصدير الإيميل غير متاحة.');
+        }
+      }catch(e){
+        alert('خطأ أثناء تجهيز الإيميل الأسبوعي: ' + e.message);
+      }
+    }, { once: false });
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wireWeeklyEmailFix);
+  } else {
+    wireWeeklyEmailFix();
+  }
+})();
+// === End Weekly Email Week Fix ===
+</script>
+<script>
+// === Weekly Email: enforce single handler & NEXT SUNDAY (no duplicates) ===
+(function(){
+  function computeNextWeekSundayIndices(dailyDatesISO){
+    if (!Array.isArray(dailyDatesISO) || !dailyDatesISO.length) return [];
+    const today = new Date();
+    const dow = today.getDay(); // 0=Sun ... 6=Sat
+    let daysUntilNextSunday = (7 - dow) % 7;
+    if (daysUntilNextSunday === 0) daysUntilNextSunday = 7; // if today is Sunday -> next week
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysUntilNextSunday);
+    const pad = n => String(n).padStart(2,'0');
+    const target = [];
+    for (let i=0;i<7;i++){
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate()+i);
+      target.push(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
+    }
+    const idx = target.map(t => dailyDatesISO.indexOf(t));
+    if (idx.every(i => i>=0)) return idx;
+    const startISO = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
+    let startIdx = dailyDatesISO.findIndex(s => s >= startISO);
+    if (startIdx < 0) startIdx = 0;
+    const out = [];
+    for (let k=startIdx; k<dailyDatesISO.length && out.length<7; k++) out.push(k);
+    return out.length===7 ? out : [];
+  }
+
+  function setupWeeklyEmailNoDup(){
+    const oldBtn = document.getElementById('weeklyEmailBtn');
+    if (!oldBtn) return;
+
+    // Replace the node to strip ALL previous listeners
+    const btn = oldBtn.cloneNode(true);
+    oldBtn.parentNode.replaceChild(btn, oldBtn);
+
+    // Single capturing handler to stop others
+    btn.addEventListener('click', function(ev){
+      try{
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+
+        const lf = window.__lastForecast;
+        if (!lf || !lf.data || !lf.data.daily || !lf.data.hourly){
+          alert('رجاءً حدِّث التنبؤ أولًا.');
+          return;
+        }
+        // Prefer Excel-captured indices if present (should already be Sun->Sat)
+        let idxList = Array.isArray(window.__weeklyLastIndices) ? window.__weeklyLastIndices.slice() : [];
+        if (!idxList || idxList.length !== 7 || idxList.some(i=>i<0)){
+          idxList = computeNextWeekSundayIndices(lf.data.daily.time);
+        }
+        if (!idxList || idxList.length !== 7 || idxList.some(i=>i<0)){
+          alert('بيانات الأسبوع غير مكتملة.');
+          return;
+        }
+        if (typeof window.exportWeeklyEmailEML === 'function'){
+          window.exportWeeklyEmailEML(idxList, lf.data, lf.windUnit);
+        } else {
+          alert('وظيفة تصدير الإيميل غير متاحة.');
+        }
+      }catch(e){
+        alert('خطأ أثناء تجهيز الإيميل الأسبوعي: ' + e.message);
+      }
+    }, true); // capture=true to ensure we run before any bubbling handlers
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', setupWeeklyEmailNoDup);
+  } else {
+    setupWeeklyEmailNoDup();
+  }
+})();
+// === End Weekly Email no-duplicate fix ===
+</script>
+<script id="rgwe-model-switch">
+(function(){
+  const H_SEL_ID = 'windHeightSel';
+  function getSel(){ return document.getElementById('modelSelect'); }
+  function setHeights(list, defVal){
+    const sel = document.getElementById(H_SEL_ID);
+    if(!sel) return;
+    const cur = Number(sel.value||defVal);
+    sel.innerHTML = '';
+    list.forEach(h=>{
+      const o = document.createElement('option');
+      o.value = String(h); o.textContent = h+' m';
+      sel.appendChild(o);
+    });
+    sel.value = String(list.includes(cur)? cur : defVal);
+    window.__windHeight = Number(sel.value);
+  }
+  function bindHeightChange(){
+    const sel = document.getElementById(H_SEL_ID);
+    if(!sel || sel.__rgweBound) return;
+    sel.__rgweBound = true;
+    sel.addEventListener('change', ()=>{ window.__windHeight = Number(sel.value||80); });
+  }
+  if(!window.__origGetForecast){ window.__origGetForecast = window.getForecast; }
+  async function ecmwfForecast(lat, lon, windUnit){
+    const url = new URL('https://api.open-meteo.com/v1/ecmwf');
+    url.searchParams.set('latitude', lat);
+    url.searchParams.set('longitude', lon);
+    url.searchParams.set('timezone', 'auto');
+    url.searchParams.set('daily','temperature_2m_max,temperature_2m_min');
+    url.searchParams.set('hourly','temperature_2m,wind_speed_10m,wind_speed_100m,wind_gusts_10m');
+    url.searchParams.set('windspeed_unit', windUnit);
+    const pad=n=>String(n).padStart(2,'0');
+    const now = new Date();
+    const startISO = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const endDate  = new Date(now.getFullYear(), now.getMonth(), now.getDate()+13);
+    const endISO   = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}`;
+    url.searchParams.set('start_date', startISO);
+    url.searchParams.set('end_date',   endISO);
+    url.searchParams.set('_', Date.now());
+    const res = await fetch(url.toString(), { cache: 'no-store' });
+    if(!res.ok){ let txt=''; try{ txt = await res.text(); }catch(e){}; throw new Error('Fetch failed '+res.status+' '+res.statusText+' — '+txt.slice(0,140)); }
+    return res.json();
+  }
+  function applyModel(mode){
+    const sel = getSel();
+    if(sel) sel.value = mode;
+    if(mode === 'ecmwf'){
+      setHeights([10,100], 100);
+      window.getForecast = ecmwfForecast;
+    }else{
+      setHeights([10,80,120,180], 80);
+      window.getForecast = window.__origGetForecast;
+    }
+    document.getElementById('fetchBtn')?.click();
+  }
+  window.addEventListener('DOMContentLoaded', ()=>{
+    bindHeightChange();
+    const sel = getSel();
+    const saved = (function(){ try{return localStorage.getItem('rgwe_model')||'default'}catch(e){return 'default'} })();
+    applyModel(saved);
+    if(sel){
+      sel.addEventListener('change', ()=>{
+        const m = sel.value || 'default';
+        try{ localStorage.setItem('rgwe_model', m); }catch(e){}
+        applyModel(m);
+      });
+    }
+  });
+})();
+</script>
+
+<script>
+(function(){
+  const KEY = 'rgwe_theme';
+
+  function setTheme(t){
+    document.documentElement.classList.toggle('dark', t === 'dark');
+    try{ localStorage.setItem(KEY, t); }catch(_){}
+    updateLabel();
+  }
+
+  function currentLang(){
+    try{
+      const s = document.getElementById('langSelect');
+      if(s && s.value) return s.value;
+    }catch(_){}
+    return (document.documentElement.lang === 'en') ? 'en' : 'ar';
+  }
+
+  // إنشاء زر التبديل وحقنه
+  const btn = document.createElement('button');
+  btn.id = 'themeToggle';
+  btn.type = 'button';
+  btn.className = 'lang-select';
+  btn.style.minWidth = '120px';
+
+  function updateLabel(){
+    const isDark = document.documentElement.classList.contains('dark');
+    const isAR = currentLang() !== 'en';
+    btn.textContent = isDark ? (isAR ? '☀️ نهاري' : '☀️ Light') : (isAR ? '🌙 ليلي' : '🌙 Dark');
+    btn.title = isAR ? 'تبديل الوضع' : 'Toggle theme';
+    btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+  }
+
+  btn.addEventListener('click', function(){
+    const isDark = document.documentElement.classList.contains('dark');
+    setTheme(isDark ? 'light' : 'dark');
+  });
+
+  // ضَمّ الزر بجوار مُحدِّد اللغة في الترويسة
+  const langSel = document.getElementById('langSelect');
+  const holder  = (langSel && langSel.parentElement) || document.querySelector('header .flex.items-center');
+  if(holder){ holder.appendChild(btn); }
+
+  // لو المستخدم غيّر اللغة… حدّث نص الزر
+  if(langSel){ langSel.addEventListener('change', updateLabel); }
+
+  // تهيئة الحالة الحالية
+  try{
+    const saved = localStorage.getItem(KEY);
+    if(saved === 'dark' || saved === 'light'){ setTheme(saved); }
+    else{
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(prefersDark ? 'dark' : 'light');
+    }
+  }catch(_){
+    setTheme('light');
+  }
+})();
+</script>
+
+<script id="rgwe-i18n-patch">
+(function(){
+  function patchI18nExtras(locale){
+    var toLbl = document.querySelector('label[for="emailTo"]');
+    var ccLbl = document.querySelector('label[for="emailCc"]');
+    var helpParas = document.querySelectorAll('label[for="emailTo"] ~ p.text-xs, label[for="emailCc"] ~ p.text-xs');
+    var modelSel = document.getElementById('modelSelect');
+    var heightLbl = (function(){ var sel=document.getElementById('windHeightSel'); return sel && sel.previousElementSibling && sel.previousElementSibling.tagName==='LABEL' ? sel.previousElementSibling : null; })();
+
+    if(locale === 'en'){
+      if(toLbl) toLbl.textContent = 'Send to (To)';
+      if(ccLbl) ccLbl.textContent = 'CC';
+      helpParas.forEach(function(p){ p.textContent = 'You can enter multiple emails separated by ; or , and it will be saved automatically.'; });
+      if(modelSel){
+        var opt = function(v,t){ var o = modelSel.querySelector('option[value="'+v+'"]').textContent = t; };
+        opt('default','Forecast (multi-model)');
+        opt('ecmwf','ECMWF (10m/100m)');
+      }
+      if(heightLbl) heightLbl.textContent = 'Wind height';
+    } else {
+      if(toLbl) toLbl.textContent = 'إرسال إلى (To)';
+      if(ccLbl) ccLbl.textContent = 'نسخة إلى (CC)';
+      helpParas.forEach(function(p){ p.textContent = 'يمكن كتابة أكثر من بريد مفصول بـ ; أو , وسيتم حفظه تلقائيًا.'; });
+      if(modelSel){
+        var opt = function(v,t){ var o = modelSel.querySelector('option[value="'+v+'"]').textContent = t; };
+        opt('default','Forecast (متعدد النماذج)');
+        opt('ecmwf','ECMWF (10m/100m)');
+      }
+      if(heightLbl) heightLbl.textContent = 'ارتفاع الرياح';
+    }
+  }
+
+  // Apply on load based on saved locale
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      var saved = localStorage.getItem('locale') || 'ar';
+      patchI18nExtras(saved);
+      try{var sig=document.querySelector('#rgweSignature .label'); if(sig){ sig.textContent = 'Designed by'; }}catch(_){}
+      var sel = document.getElementById('langSelect');
+      if(sel){
+        sel.addEventListener('change', function(e){ patchI18nExtras(e.target.value); try{var sig=document.querySelector('#rgweSignature .label'); if(sig){ sig.textContent = 'Designed by'; }}catch(_){} });
+      }
+    }catch(e){ console.error(e); }
+  });
+})();
+</script>
+
+<script id="rgwe-signature-enforce">
+document.addEventListener('DOMContentLoaded', function(){
+  var sig = document.querySelector('#rgweSignature .label');
+  if(sig) sig.textContent = 'Designed by';
+});
+</script>
+
+
+<script id="rgwe-signature-ua">
+document.addEventListener('DOMContentLoaded', function(){
+  var sig = document.querySelector('#rgweSignature .label');
+  if(sig) sig.textContent = 'DESIGNED BY';
+});
+</script>
+
+</body>
+</html>
+<script>
+/* === Excel Export Override v6 ===
+   - Fixes download issues by generating a Blob and clicking a hidden <a>
+   - Ensures XLSX library is loaded dynamically if missing
+   - Keeps: single title row, single time header row, one continuous table, thin borders, bold first column labels
+*/
+(function(){
+  function ensureXLSX(cb){
+    if (window.XLSX && XLSX.utils && XLSX.write) return cb();
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = function(){ cb(); };
+    s.onerror = function(){ alert('تعذر تحميل مكتبة Excel من CDN'); };
+    document.head.appendChild(s);
+  }
+
+  function ymdLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+  function nextSunday(from = new Date()){ const day=from.getDay(); const delta=((7-day)%7)||7; const d=new Date(from); d.setHours(0,0,0,0); d.setDate(d.getDate()+delta); return d; }
+  function getNextWeekDates(){ const start=nextSunday(new Date()); const days=[]; for(let i=0;i<7;i++){ const di=new Date(start); di.setDate(start.getDate()+i); days.push(ymdLocal(di)); } return days; }
+  function indicesForDates(dates, dailyTimes){ return dates.map(d => dailyTimes.indexOf(d)); }
+
+  function toMs(v,u){
+    try{ if(window.convertToMs) return window.convertToMs(v,u); }catch(e){}
+    if (!Number.isFinite(v)) return NaN;
+    return u==='kn' || u==='knots' ? v*0.514444 : (u==='kmh' ? v/3.6 : (u==='mph' ? v*0.44704 : v));
+  }
+  function expectedProd(w_ms){
+    try{ if(window.expectedProductionMWFromSheet) return window.expectedProductionMWFromSheet(w_ms); }catch(e){}
+    const cut=3,rated=12,cap=100; if(!Number.isFinite(w_ms)||w_ms<=cut) return 0; if(w_ms>=rated) return cap; const n=(w_ms-cut)/(rated-cut); return Math.pow(n,3)*cap;
+  }
+  function hoursForDay(dayIdx, hourlyTimes){
+    try{ if(window.hoursForDay) return window.hoursForDay(dayIdx, hourlyTimes).slice(0,24); }catch(e){}
+    const dateISO = window.__lastForecast?.data?.daily?.time?.[dayIdx];
+    const idxs = [];
+    for (let k=0; k<hourlyTimes.length; k++){
+      if (hourlyTimes[k].startsWith(dateISO)){ idxs.push(k); if (idxs.length===24) break; }
+    }
+    return idxs;
+  }
+
+  function buildWeeklyWorkbook(data, indices, windUnitUI){
+    const wb = XLSX.utils.book_new();
+    const allRows = [];
+    const merges = [];
+
+    // Global title once
+    const yearAny = new Date((data.daily.time[indices[0]]||'') + 'T00:00:00').getFullYear();
+    const titleRow = new Array(26).fill('');
+    titleRow[0] = `Forecasted Output Of The Facility, RGWE ${yearAny}`;
+    allRows.push(titleRow);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: 25 } });
+
+    // Single time header row
+    const headerRow = new Array(26).fill('');
+    headerRow[0] = 'Date / Metric';
+    for (let h=0; h<24; h++){ headerRow[1+h] = `${String(h).padStart(2,'0')}:00`; }
+    headerRow[25] = 'Avg / Total';
+    allRows.push(headerRow);
+
+    // Append per-day blocks: 4 rows (wind, temp, avail, production) — NO blank rows
+    indices.forEach((dayIdx) => {
+      const idxs = hoursForDay(dayIdx, data.hourly.time);
+      const dayISO   = data.daily.time[dayIdx];
+      const dateObj  = new Date(dayISO + 'T00:00:00');
+      const niceDate = dateObj.toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'numeric', year:'numeric'}).replace(/\//g,'-');
+
+      // Wind
+      const windRow = new Array(26).fill(''); windRow[0] = `${niceDate} – Expected Wind Speed, m/s`;
+      let windSum=0, windCount=0;
+      idxs.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const v = Number.isFinite(wMs)? Math.round(wMs) : ''; windRow[i+1]=v; if(Number.isFinite(wMs)){ windSum+=wMs; windCount++; } });
+      windRow[25] = windCount ? +(windSum/windCount).toFixed(2) : ''; allRows.push(windRow);
+
+      // Temperature
+      const tempRow = new Array(26).fill(''); tempRow[0] = 'Expected Temperature, °C';
+      let tempSum=0, tempCount=0;
+      idxs.forEach((k,i)=>{ const T = data.hourly.temperature_2m[k]; tempRow[i+1] = Number.isFinite(T) ? +T : ''; if(Number.isFinite(T)){ tempSum+=T; tempCount++; } });
+      tempRow[25] = tempCount ? +(tempSum/tempCount).toFixed(2) : ''; allRows.push(tempRow);
+
+      // Availability
+      const availRow = new Array(26).fill(''); availRow[0] = 'Availability %';
+      for (let i=0;i<24;i++) availRow[i+1] = 98;
+      availRow[25] = 98; allRows.push(availRow);
+
+      // Production
+      const powerRow = new Array(26).fill(''); powerRow[0] = 'Expected Production, MW';
+      let powerSum=0;
+      idxs.forEach((k,i)=>{ const wMs = toMs(getWindArray(data)[k], windUnitUI); const prodMW = expectedProd(wMs); powerRow[i+1] = Number.isFinite(prodMW) ? +prodMW.toFixed(3) : ''; powerSum += (Number.isFinite(prodMW)? prodMW : 0); });
+      powerRow[25] = +powerSum.toFixed(3); allRows.push(powerRow);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws['!merges'] = (ws['!merges'] || []).concat(merges);
+
+    // Thin borders & alignment + bold title/header/first col labels
+    const rows = allRows.length, cols = 26;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) continue;
+        const cell = ws[addr]; cell.s = cell.s || {};
+        cell.s.border = {
+          top: {style:'thin', color:{rgb:'000000'}},
+          bottom: {style:'thin', color:{rgb:'000000'}},
+          left: {style:'thin', color:{rgb:'000000'}},
+          right: {style:'thin', color:{rgb:'000000'}}
+        };
+        const val = cell.v;
+        const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isTimeLike = (typeof val === 'string') && /^\\d{2}:\\d{2}$/.test(val?.toString().trim());
+        if (isNumeric || isTimeLike || r<=1) {
+          cell.s.alignment = Object.assign({}, cell.s.alignment || {}, { horizontal: 'center', vertical: 'center' });
+        }
+        if (r===0){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true, sz: 14 }); }
+        if (r===1){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true }); }
+        if (r>=2 && c===0){ cell.s.font = Object.assign({}, cell.s.font || {}, { bold: true }); }
+      }
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Weekly');
+    return wb;
+  }
+
+  function saveWorkbook(wb, filename){
+    try{
+      const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+      const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    }catch(e){
+      console.error(e);
+      alert('تعذر إنشاء ملف Excel في المتصفح.');
+    }
+  }
+
+  function exportWeeklyExcelV6(data, indices, windUnitUI){
+    ensureXLSX(function(){
+      const wb = buildWeeklyWorkbook(data, indices, windUnitUI);
+      const wDates = indices.map(i => data.daily.time[i]);
+      const fname = `WeeklyForecast_${wDates[0]}_to_${wDates[6]}_ONE_TABLE.xlsx`;
+      saveWorkbook(wb, fname);
+    });
+  }
+
+  // Make globally accessible and hard-bind button to this override
+  window.exportWeeklyExcel = exportWeeklyExcelV6;
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest && ev.target.closest('#weeklyXlsBtn');
+    if (!btn) return;
+    ev.stopImmediatePropagation && ev.stopImmediatePropagation();
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    const store = window.__lastForecast;
+    const data = store && store.data;
+    if(!data || !data.daily || !data.daily.time){ alert('لم يتم جلب البيانات بعد. اضغط \"تحديث التنبؤ\" أولًا.'); return; }
+
+    const weekDates = getNextWeekDates();
+    const idxList = indicesForDates(weekDates, data.daily.time);
+    if (idxList.some(i=> i===-1)) { alert('بيانات الأسبوع القادم غير مكتملة. تأكد أن forecast_days=14 ثم أعد الجلب.'); return; }
+
+    exportWeeklyExcelV6(data, idxList, store.windUnit);
+  }, true);
+})();
+</script>

@@ -196,7 +196,7 @@
 </div>
 <script id="rgwe-password-gate-script">
 (function(){
-  const HASH_HEX = "94edf28c6d6da38fd35d7ad53e485307f89fbeaf120485c8d17a43f323deee71"; // sha256("666666")
+  const hashPromise = fetch("config.json").then(r=>r.json()).then(cfg=>cfg.sitePasswordHash).catch(()=>null);
   const REMEMBER_KEY = "rgwe_pw_ok";
   const overlay = document.getElementById("rgwe-pw-overlay");
   const form    = document.getElementById("rgwe-pw-form");
@@ -218,7 +218,8 @@
     const val = (input.value || "").trim();
     try {
       const got = await sha256Hex(val);
-      if (got === HASH_HEX){
+      const expected = await hashPromise;
+      if (expected && got === expected){
         try{ sessionStorage.setItem(REMEMBER_KEY, "1"); }catch(_){}
         overlay.remove();
       }else{
@@ -2603,7 +2604,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script id="rgwe-lock-to-cc-script">
 (function(){
-  const HASH_HEX = "218a31278877e01cf68fb546ef97cc016d40a8ce8cb842a0171050e0e6e186b3";
+  const hashPromise = fetch("config.json").then(r=>r.json()).then(cfg=>cfg.lockToCcHash).catch(()=>null);
   const KEY = "rgwe_to_cc_unlocked";
 
   function isArabicNow(){
@@ -2708,7 +2709,8 @@ document.addEventListener('DOMContentLoaded', function(){
         err.textContent = "";
         try {
           const got = await sha256Hex((inp.value||"").trim());
-          if (got === HASH_HEX) {
+          const expected = await hashPromise;
+          if (expected && got === expected) {
             setUnlocked(true);
             closeOverlay();
           } else {

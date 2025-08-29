@@ -276,7 +276,7 @@
 </select>
 <label class="block text-sm text-gray-600 mt-2">ارتفاع الرياح</label>
 <select class="w-full border rounded-xl px-3 py-2" id="windHeightSel">
-<option value="10">10 m</option>
+<option value="10" selected="selected">10 m</option>
 <option selected="" value="80">80 m</option>
 <option value="120">120 m</option>
 <option value="180">180 m</option>
@@ -2842,6 +2842,51 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 })();
 </script>
+
+<script id="rgwe-default-windheight-10m">
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    var tried = 0;
+    function setTo10(sel){
+      if (!sel) return false;
+      // Only change if it looks like the wind-height select
+      var label = null;
+      // Try previous label in same container
+      var p = sel.previousElementSibling;
+      if (p && p.tagName && p.tagName.toLowerCase() === 'label') label = p;
+      if (!label){
+        // Try to find a label by 'for' attribute
+        var id = sel.id;
+        if (id) label = document.querySelector('label[for="'+id+'"]');
+      }
+      var txt = (label && label.textContent || '').toLowerCase();
+      var isWindHeight = txt.includes('wind height') || /ارتفاع/.test(txt);
+      if (!isWindHeight && !(sel.id||'').toLowerCase().includes('windheight') && !(sel.name||'').toLowerCase().includes('windheight')){
+        return false;
+      }
+      // If app hasn't already set a different value, set to 10
+      if (!sel.value || sel.value === '80' || sel.value === '100' || sel.value === '90'){
+        sel.value = '10';
+        // Also reflect selected attribute for 10 if present
+        var opt10 = sel.querySelector('option[value="10"], option[value=10]');
+        if (opt10){ 
+          sel.querySelectorAll('option').forEach(function(o){ o.removeAttribute('selected'); });
+          opt10.setAttribute('selected', 'selected');
+        }
+      }
+      return true;
+    }
+    var sel = document.getElementById('windHeightSel') 
+           || document.querySelector('select[name="windHeight"]') 
+           || null;
+    var done = setTo10(sel);
+    if (!done){
+      document.querySelectorAll('select').forEach(function(s){ if (!done) done = setTo10(s); });
+    }
+  }catch(e){/* no-op */}
+});
+</script>
+
 </body>
 </html>
 <script>

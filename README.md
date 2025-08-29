@@ -1,3 +1,5 @@
-# RGWE Forecast (Updated)
+# RGWE Forecast — GitHub Pages package
 
-This is the updated static site for GitHub Pages.
+Upload these files to the root of your repo (branch `main`).
+- index.html
+- .nojekyll

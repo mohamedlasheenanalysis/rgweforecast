@@ -2002,11 +2002,11 @@ if (!ok){
 (function(){
   function saveAsEmlWeekly(params){
     try{
-      var subject = params.subject || '';
-      var html    = params.html || '';
-      var to      = params.to || '';
-      var cc      = params.cc || '';
-      var headers = [
+      const subject = params.subject || '';
+      const html    = params.html || '';
+      const to      = params.to || '';
+      const cc      = params.cc || '';
+      const headers = [
         'X-Unsent: 1',
         (to ? 'To: ' + to : ''),
         (cc ? 'Cc: ' + cc : ''),
@@ -2016,16 +2016,16 @@ if (!ok){
         'Content-Transfer-Encoding: base64'
       ].filter(Boolean).join('\r\n');
       function b64(s){ return btoa(unescape(encodeURIComponent(s))); }
-      var eml = headers + '\r\n\r\n' + b64(html);
+      const eml = headers + '\r\n\r\n' + b64(html);
       try{
-        var blob = new Blob([eml], {type:'message/rfc822'});
-        var url  = URL.createObjectURL(blob);
-        var a = document.createElement('a');
+        const blob = new Blob([eml], {type:'message/rfc822'});
+        const url  = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.href = url; a.download = 'RGWE_weekly_forecast.eml';
         document.body.appendChild(a); a.click();
         setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 1200);
       }catch(e){
-        var a2 = document.createElement('a');
+        const a2 = document.createElement('a');
         a2.href = 'data:message/rfc822;charset=utf-8,' + encodeURIComponent(eml);
         a2.download = 'RGWE_weekly_forecast.eml';
         document.body.appendChild(a2); a2.click(); a2.remove();

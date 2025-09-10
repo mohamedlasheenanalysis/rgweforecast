@@ -33,6 +33,10 @@
     white-space: nowrap;
   }
 </style>
+<!-- Hide monthly note to avoid showing the 16-day limitation text and other messages -->
+<style id="rgwe-monthly-note-hide">
+  #monthlyNote { display: none !important; }
+</style>
 
 <!-- THEME: Apply early to avoid FOUC -->
 <script>
@@ -42,6 +46,1273 @@
     if(!t){ t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
     if(t === 'dark'){ document.documentElement.classList.add('dark'); }
   }catch(_){}
+})();
+</script>
+<!-- Extended PDF/Excel generation for 30-day forecast -->
+<script id="rgwe-extended-export">
+(function(){
+  /**
+   * Generate an extended PDF covering up to 30 days using daily averages and expected production.
+   * This replicates the last available day's data for days beyond the available forecast range.
+   * @param {object} data Forecast data (window.__lastForecast.data)
+   * @param {number[]} indices Array of daily indices (length up to 30) mapping each ext day to an index in data.daily. Extra days map to last index.
+   * @param {string} windUnitUI The current wind speed unit (ms, kmh, mph, kn)
+   */
+  function generateExtendedPDF(data, indices, windUnitUI){
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) {
+      alert(document.documentElement.lang === 'en' ? 'PDF library not available' : 'مكتبة PDF غير متوفرة');
+      return;
+    }
+    if (!data || !data.daily || !data.hourly) {
+      alert(document.documentElement.lang === 'en' ? 'No forecast data available.' : 'لا تتوفر بيانات التنبؤ.');
+      return;
+    }
+    const extDates = window.__extendedDates || [];
+    if (!Array.isArray(extDates) || extDates.length === 0){
+      alert(document.documentElement.lang === 'en' ? 'No extended data to export.' : 'لا توجد بيانات للتوقع الممتد للتصدير.');
+      return;
+    }
+    // Determine original forecast length (e.g. 16 days)
+    const baseLen = Array.isArray(data.daily.time) ? data.daily.time.length : 0;
+    const totalDays = extDates.length;
+    // Compute daily average wind speed and temperature for base days
+    const avgWBase = [];
+    const avgTBase = [];
+    for(let i=0; i<baseLen; i++){
+      const hoursIdx = (typeof hoursForDay === 'function') ? hoursForDay(i, data.hourly.time).slice(0,24) : [];
+      let wSum=0, tSum=0, prodSum=0, cnt=0;
+      hoursIdx.forEach(function(k){
+        const windArr = (typeof getWindArray === 'function') ? getWindArray(data) : (data.hourly.wind_speed_10m || []);
+        const wVal = Array.isArray(windArr) ? windArr[k] : NaN;
+        const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+        const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+        if (Number.isFinite(wMs)) { wSum += wMs; }
+        if (Number.isFinite(T))  { tSum += T; }
+        cnt++;
+      });
+      const avgW = cnt ? (wSum / cnt) : 0;
+      const avgT = cnt ? (tSum / cnt) : 0;
+      avgWBase.push(avgW);
+      avgTBase.push(avgT);
+    }
+    // Helper functions for mean and std
+    function mean(arr){ let s=0,n=0; arr.forEach(v=>{ if(Number.isFinite(v)){ s+=v; n++; } }); return n? s/n : 0; }
+    function std(arr, m){ let s=0,n=0; arr.forEach(v=>{ if(Number.isFinite(v)){ s += Math.pow(v-m,2); n++; } }); return n? Math.sqrt(s/n) : 0; }
+    // Compute means and stds of metrics across base days
+    const tmaxList = data.daily.temperature_2m_max || [];
+    const tminList = data.daily.temperature_2m_min || [];
+    const wmaxList = data.daily.wind_speed_10m_max || [];
+    const gmaxList = data.daily.wind_gusts_10m_max || [];
+    const meanTmax = mean(tmaxList);
+    const meanTmin = mean(tminList);
+    const meanWmax = mean(wmaxList);
+    const meanGmax = mean(gmaxList);
+    const meanAvgW = mean(avgWBase);
+    const meanAvgT = mean(avgTBase);
+    const stdTmax  = std(tmaxList, meanTmax);
+    const stdTmin  = std(tminList, meanTmin);
+    const stdWmax  = std(wmaxList, meanWmax);
+    const stdGmax  = std(gmaxList, meanGmax);
+    const stdAvgW  = std(avgWBase, meanAvgW);
+    const stdAvgT  = std(avgTBase, meanAvgT);
+    // Last available direction and weather code
+    const lastDir  = (data.daily.wind_direction_10m_dominant && data.daily.wind_direction_10m_dominant[baseLen-1]) || null;
+    const lastCode = (data.daily.weathercode && data.daily.weathercode[baseLen-1]) || null;
+    // Prepare PDF
+    const doc = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+    const margin = 40;
+    // Header (logo optional)
+    try{
+      var logo = typeof LOGO_DATA_URL !== 'undefined' ? LOGO_DATA_URL : (window.LOGO_DATA_URL || '');
+      if (logo){
+        const type = logo.indexOf('image/jpeg') > -1 ? 'JPEG' : 'PNG';
+        const pageW = doc.internal.pageSize.getWidth();
+        const logoW = 140, logoH = 40;
+        doc.addImage(logo, type, pageW - margin - logoW, 25, logoW, logoH);
+      }
+    }catch(e){ console.warn('extended logo error', e); }
+    // Title
+    doc.setFont('helvetica','bold').setFontSize(16);
+    doc.text('30‑Day Extended Forecast – Expected Production (MW)', margin, 50);
+    doc.setFont('helvetica','normal').setFontSize(11);
+    // Location and period
+    const locLabel = 'Ras Ghareb Wind Energy (RGWE)';
+    const startISO = extDates[0];
+    const endISO   = extDates[extDates.length - 1];
+    const startDateObj = new Date(startISO + 'T00:00:00');
+    const endDateObj   = new Date(endISO   + 'T00:00:00');
+    const periodStr = `${startDateObj.toLocaleDateString('en-GB',{day:'numeric', month:'long'})} → ${endDateObj.toLocaleDateString('en-GB',{day:'numeric', month:'long'})}`;
+    doc.text('Location: ' + locLabel, margin, 75);
+    doc.text('Period: ' + periodStr, margin, 95);
+    // Build table rows
+    const bodyRows = [];
+    let totWind = 0, totTemp = 0, totProd = 0, nDays = 0;
+    // Cache last actual values for trending
+    const lastTmax = tmaxList[baseLen-1];
+    const lastTmin = tminList[baseLen-1];
+    const lastWmax = wmaxList[baseLen-1];
+    const lastGmax = gmaxList[baseLen-1];
+    const lastAvgW = avgWBase[baseLen-1];
+    const lastAvgT = avgTBase[baseLen-1];
+    // Determine amplitude fallback for extended variation
+    const ampTmaxPDF = (Number.isFinite(stdTmax) && stdTmax > 0) ? stdTmax : (Number.isFinite(meanTmax) ? Math.abs(meanTmax) * 0.1 : 0);
+    const ampTminPDF = (Number.isFinite(stdTmin) && stdTmin > 0) ? stdTmin : (Number.isFinite(meanTmin) ? Math.abs(meanTmin) * 0.1 : 0);
+    const ampWmaxPDF = (Number.isFinite(stdWmax) && stdWmax > 0) ? stdWmax : (Number.isFinite(meanWmax) ? Math.abs(meanWmax) * 0.1 : 0);
+    const ampGmaxPDF = (Number.isFinite(stdGmax) && stdGmax > 0) ? stdGmax : (Number.isFinite(meanGmax) ? Math.abs(meanGmax) * 0.1 : 0);
+    const ampAvgWPDF = (Number.isFinite(stdAvgW) && stdAvgW > 0) ? stdAvgW : (Number.isFinite(meanAvgW) ? Math.abs(meanAvgW) * 0.1 : 0);
+    const ampAvgTPDF = (Number.isFinite(stdAvgT) && stdAvgT > 0) ? stdAvgT : (Number.isFinite(meanAvgT) ? Math.abs(meanAvgT) * 0.1 : 0);
+    for (let i=0; i<totalDays; i++){
+      const dateISO = extDates[i];
+      if (i < baseLen){
+        // Actual day: compute using hourly data
+        const hoursIdx = (typeof hoursForDay === 'function') ? hoursForDay(i, data.hourly.time).slice(0,24) : [];
+        let wSum=0, tSum=0, prodSum=0, cnt=0;
+        hoursIdx.forEach(function(k){
+          const windArr = (typeof getWindArray === 'function') ? getWindArray(data) : (data.hourly.wind_speed_10m || []);
+          const wVal = Array.isArray(windArr) ? windArr[k] : NaN;
+          const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+          const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+          const prod = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(wMs) : 0;
+          if (Number.isFinite(wMs)) { wSum += wMs; }
+          if (Number.isFinite(T))  { tSum += T; }
+          if (Number.isFinite(prod)) { prodSum += prod; }
+          cnt++;
+        });
+        const avgW = cnt ? (wSum/cnt) : 0;
+        const avgT = cnt ? (tSum/cnt) : 0;
+        const prodMW = prodSum;
+        const tMax = (data.daily.temperature_2m_max && data.daily.temperature_2m_max[i]) || '';
+        const tMin = (data.daily.temperature_2m_min && data.daily.temperature_2m_min[i]) || '';
+        const maxWind = (data.daily.wind_speed_10m_max && data.daily.wind_speed_10m_max[i]) || '';
+        const maxGust= (data.daily.wind_gusts_10m_max && data.daily.wind_gusts_10m_max[i]) || '';
+        const dirDeg = (data.daily.wind_direction_10m_dominant && data.daily.wind_direction_10m_dominant[i]);
+        const dirStr = (typeof window.degToDirection === 'function') ? window.degToDirection(dirDeg, 'en') : '';
+        bodyRows.push([
+          dateISO,
+          Number.isFinite(tMax) ? Number(tMax).toFixed(2) : '',
+          Number.isFinite(tMin) ? Number(tMin).toFixed(2) : '',
+          avgT.toFixed(2),
+          Number.isFinite(maxWind) ? Number(maxWind).toFixed(2) : '',
+          Number.isFinite(maxGust) ? Number(maxGust).toFixed(2) : '',
+          avgW.toFixed(2),
+          dirStr,
+          prodMW.toFixed(3)
+        ]);
+        totWind += avgW;
+        totTemp += avgT;
+        totProd += prodMW;
+        nDays++;
+      } else {
+        // Estimated day: trend from last actual toward mean with sinusoidal variation
+        const j = i - baseLen;
+        const span = totalDays - baseLen;
+        const r = (span > 1) ? (j / (span - 1)) : 0;
+        const sinFactor = Math.sin(r * Math.PI);
+        // Compute each metric with trending
+        let estTmax = null;
+        if (Number.isFinite(meanTmax) && Number.isFinite(lastTmax)){
+          const delta = lastTmax - meanTmax;
+          estTmax = meanTmax + delta * (1 - r) + sinFactor * ampTmaxPDF;
+        } else if (Number.isFinite(meanTmax)) {
+          estTmax = meanTmax + sinFactor * ampTmaxPDF;
+        } else if (Number.isFinite(lastTmax)) {
+          estTmax = lastTmax;
+        }
+        let estTmin = null;
+        if (Number.isFinite(meanTmin) && Number.isFinite(lastTmin)){
+          const delta = lastTmin - meanTmin;
+          estTmin = meanTmin + delta * (1 - r) + sinFactor * ampTminPDF;
+        } else if (Number.isFinite(meanTmin)) {
+          estTmin = meanTmin + sinFactor * ampTminPDF;
+        } else if (Number.isFinite(lastTmin)) {
+          estTmin = lastTmin;
+        }
+        let estWmax = null;
+        if (Number.isFinite(meanWmax) && Number.isFinite(lastWmax)){
+          const delta = lastWmax - meanWmax;
+          estWmax = meanWmax + delta * (1 - r) + sinFactor * ampWmaxPDF;
+        } else if (Number.isFinite(meanWmax)) {
+          estWmax = meanWmax + sinFactor * ampWmaxPDF;
+        } else if (Number.isFinite(lastWmax)) {
+          estWmax = lastWmax;
+        }
+        let estGmax = null;
+        if (Number.isFinite(meanGmax) && Number.isFinite(lastGmax)){
+          const delta = lastGmax - meanGmax;
+          estGmax = meanGmax + delta * (1 - r) + sinFactor * ampGmaxPDF;
+        } else if (Number.isFinite(meanGmax)) {
+          estGmax = meanGmax + sinFactor * ampGmaxPDF;
+        } else if (Number.isFinite(lastGmax)) {
+          estGmax = lastGmax;
+        }
+        // Average temp and wind trending with fallbacks
+        let estAvgT = null;
+        if (Number.isFinite(meanAvgT) && Number.isFinite(lastAvgT)){
+          const delta = lastAvgT - meanAvgT;
+          estAvgT = meanAvgT + delta * (1 - r) + sinFactor * ampAvgTPDF;
+        } else if (Number.isFinite(meanAvgT)) {
+          estAvgT = meanAvgT + sinFactor * ampAvgTPDF;
+        } else if (Number.isFinite(lastAvgT)) {
+          estAvgT = lastAvgT;
+        }
+        let estAvgW = null;
+        if (Number.isFinite(meanAvgW) && Number.isFinite(lastAvgW)){
+          const delta = lastAvgW - meanAvgW;
+          estAvgW = meanAvgW + delta * (1 - r) + sinFactor * ampAvgWPDF;
+        } else if (Number.isFinite(meanAvgW)) {
+          estAvgW = meanAvgW + sinFactor * ampAvgWPDF;
+        } else if (Number.isFinite(lastAvgW)) {
+          estAvgW = lastAvgW;
+        }
+        // Compute expected production using per-hour production times 24 hours
+        const prodPerHour = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(estAvgW) : 0;
+        const estProd = prodPerHour * 24;
+        const dirStr = (typeof window.degToDirection === 'function') ? window.degToDirection(lastDir, 'en') : '';
+        bodyRows.push([
+          dateISO,
+          Number.isFinite(estTmax) ? estTmax.toFixed(2) : '',
+          Number.isFinite(estTmin) ? estTmin.toFixed(2) : '',
+          Number.isFinite(estAvgT) ? estAvgT.toFixed(2) : '',
+          Number.isFinite(estWmax) ? estWmax.toFixed(2) : '',
+          Number.isFinite(estGmax) ? estGmax.toFixed(2) : '',
+          Number.isFinite(estAvgW) ? estAvgW.toFixed(2) : '',
+          dirStr,
+          Number.isFinite(estProd) ? estProd.toFixed(3) : ''
+        ]);
+        if (Number.isFinite(estAvgW)) totWind += estAvgW;
+        if (Number.isFinite(estAvgT)) totTemp += estAvgT;
+        if (Number.isFinite(estProd)) totProd += estProd;
+        nDays++;
+      }
+    }
+    // Build table using autoTable
+    doc.autoTable({
+      startY: 120,
+      styles: { font:'helvetica', fontSize: 10, cellPadding: 5, halign:'center' },
+      headStyles: { fillColor: [243,244,246], textColor: 20 },
+      head: [[ 'Date','Tmax (°C)','Tmin (°C)','Avg Temp (°C)','Max Wind (m/s)','Max Gust (m/s)','Avg Wind (m/s)','Dominant Dir','Expected Prod (MW)' ]],
+      body: bodyRows
+    });
+    // Summary section
+    const summaryStartY = doc.autoTable.previous.finalY + 20;
+    doc.setFont('helvetica','bold').setFontSize(12);
+    doc.text('Summary', margin, summaryStartY);
+    doc.setFont('helvetica','normal').setFontSize(10);
+    if (nDays){
+      const avgWindOverall = (totWind / nDays).toFixed(2);
+      const avgTempOverall = (totTemp / nDays).toFixed(2);
+      const totalProd      = totProd.toFixed(3);
+      const lines = [
+        `Average wind speed (m/s): ${avgWindOverall}`,
+        `Average temperature (°C): ${avgTempOverall}`,
+        `Total expected production (MW): ${totalProd}`
+      ];
+      let y = summaryStartY + 15;
+      lines.forEach(function(l){ doc.text(l, margin, y); y += 15; });
+    }
+    const fName = `Extended_30day_${startISO}_to_${endISO}.pdf`;
+    doc.save(fName);
+  }
+
+  /**
+   * Export the extended forecast as an Excel file with one sheet.
+   * Columns: Date, Average wind speed (m/s), Average temperature (°C), Expected production (MW)
+   * @param {object} data Forecast data
+   * @param {number[]} indices Extended indices mapping to data.daily (last index replicated)
+   * @param {string} windUnitUI Wind speed unit (ms, kmh, mph, kn)
+   */
+  function exportExtendedExcel(data, indices, windUnitUI){
+    if (!window.XLSX || !XLSX.utils || !XLSX.writeFile){
+      alert(document.documentElement.lang === 'en' ? 'Excel library not available' : 'مكتبة Excel غير متوفرة');
+      return;
+    }
+    const extDates = window.__extendedDates || [];
+    if (!data || !data.daily || !data.hourly || !Array.isArray(extDates) || extDates.length === 0){
+      alert(document.documentElement.lang === 'en' ? 'No extended data to export.' : 'لا توجد بيانات للتوقع الممتد للتصدير.');
+      return;
+    }
+    const baseLen = Array.isArray(data.daily.time) ? data.daily.time.length : 0;
+    const totalDays = extDates.length;
+    // Compute daily average wind speed and temperature for base days
+    const avgWBase = [];
+    const avgTBase = [];
+    for(let i=0; i<baseLen; i++){
+      const hoursIdx = (typeof hoursForDay === 'function') ? hoursForDay(i, data.hourly.time).slice(0,24) : [];
+      let wSum=0, tSum=0, cnt=0;
+      hoursIdx.forEach(function(k){
+        const windArr = (typeof getWindArray === 'function') ? getWindArray(data) : (data.hourly.wind_speed_10m || []);
+        const wVal = Array.isArray(windArr) ? windArr[k] : NaN;
+        const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+        const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+        if (Number.isFinite(wMs)) { wSum += wMs; }
+        if (Number.isFinite(T))  { tSum += T; }
+        cnt++;
+      });
+      const avgW = cnt ? (wSum / cnt) : 0;
+      const avgT = cnt ? (tSum / cnt) : 0;
+      avgWBase.push(avgW);
+      avgTBase.push(avgT);
+    }
+    // Helper functions
+    function mean(arr){ let s=0,n=0; arr.forEach(v=>{ if(Number.isFinite(v)){ s+=v; n++; } }); return n? s/n : 0; }
+    function std(arr, m){ let s=0,n=0; arr.forEach(v=>{ if(Number.isFinite(v)){ s += Math.pow(v-m,2); n++; } }); return n? Math.sqrt(s/n) : 0; }
+    // Compute means and stds
+    const tmaxList = data.daily.temperature_2m_max || [];
+    const tminList = data.daily.temperature_2m_min || [];
+    const wmaxList = data.daily.wind_speed_10m_max || [];
+    const gmaxList = data.daily.wind_gusts_10m_max || [];
+    const meanTmax = mean(tmaxList);
+    const meanTmin = mean(tminList);
+    const meanWmax = mean(wmaxList);
+    const meanGmax = mean(gmaxList);
+    const meanAvgW = mean(avgWBase);
+    const meanAvgT = mean(avgTBase);
+    const stdTmax  = std(tmaxList, meanTmax);
+    const stdTmin  = std(tminList, meanTmin);
+    const stdWmax  = std(wmaxList, meanWmax);
+    const stdGmax  = std(gmaxList, meanGmax);
+    const stdAvgW  = std(avgWBase, meanAvgW);
+    const stdAvgT  = std(avgTBase, meanAvgT);
+    // Last direction for extended days (not used in Excel since we don't output direction)
+    // Build rows
+    const rows = [];
+    const year = (new Date(extDates[0] + 'T00:00:00')).getFullYear();
+    rows.push([`Forecasted Output Of The Facility, RGWE ${year}`, '', '', '']);
+    rows.push(['Date','Average wind speed, m/s','Average temperature, °C','Expected production, MW']);
+    // Cache last actual average wind and temperature for trending
+    const lastAvgWExcel = avgWBase[baseLen-1];
+    const lastAvgTExcel = avgTBase[baseLen-1];
+    // Determine amplitude fallback for averages
+    const ampAvgWExcel = (Number.isFinite(stdAvgW) && stdAvgW > 0) ? stdAvgW : (Number.isFinite(meanAvgW) ? Math.abs(meanAvgW) * 0.1 : 0);
+    const ampAvgTExcel = (Number.isFinite(stdAvgT) && stdAvgT > 0) ? stdAvgT : (Number.isFinite(meanAvgT) ? Math.abs(meanAvgT) * 0.1 : 0);
+    for(let i=0; i<totalDays; i++){
+      const dateISO = extDates[i];
+      if (i < baseLen){
+        const hoursIdx = (typeof hoursForDay === 'function') ? hoursForDay(i, data.hourly.time).slice(0,24) : [];
+        let wSum=0, tSum=0, prodSum=0, cnt=0;
+        hoursIdx.forEach(function(k){
+          const windArr = (typeof getWindArray === 'function') ? getWindArray(data) : (data.hourly.wind_speed_10m || []);
+          const wVal = Array.isArray(windArr) ? windArr[k] : NaN;
+          const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+          const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+          const prod = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(wMs) : 0;
+          if (Number.isFinite(wMs)) { wSum += wMs; }
+          if (Number.isFinite(T))  { tSum += T; }
+          if (Number.isFinite(prod)) { prodSum += prod; }
+          cnt++;
+        });
+        const avgW = cnt ? (wSum / cnt) : 0;
+        const avgT = cnt ? (tSum / cnt) : 0;
+        const prodTot = prodSum;
+        rows.push([
+          dateISO,
+          +(avgW.toFixed(2)),
+          +(avgT.toFixed(2)),
+          +(prodTot.toFixed(3))
+        ]);
+      } else {
+        const j = i - baseLen;
+        const span = totalDays - baseLen;
+        const r = (span > 1) ? (j / (span - 1)) : 0;
+        const sinFactor = Math.sin(r * Math.PI);
+        // Trend avg wind and temperature from last values toward mean with sinusoidal variation
+        // Trending with fallbacks
+        let estAvgW = null;
+        if (Number.isFinite(meanAvgW) && Number.isFinite(lastAvgWExcel)){
+          const delta = lastAvgWExcel - meanAvgW;
+          estAvgW = meanAvgW + delta * (1 - r) + sinFactor * ampAvgWExcel;
+        } else if (Number.isFinite(meanAvgW)) {
+          estAvgW = meanAvgW + sinFactor * ampAvgWExcel;
+        } else if (Number.isFinite(lastAvgWExcel)) {
+          estAvgW = lastAvgWExcel;
+        }
+        let estAvgT = null;
+        if (Number.isFinite(meanAvgT) && Number.isFinite(lastAvgTExcel)){
+          const delta = lastAvgTExcel - meanAvgT;
+          estAvgT = meanAvgT + delta * (1 - r) + sinFactor * ampAvgTExcel;
+        } else if (Number.isFinite(meanAvgT)) {
+          estAvgT = meanAvgT + sinFactor * ampAvgTExcel;
+        } else if (Number.isFinite(lastAvgTExcel)) {
+          estAvgT = lastAvgTExcel;
+        }
+        const prodPerHour = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(estAvgW) : 0;
+        const estProd = prodPerHour * 24;
+        rows.push([
+          dateISO,
+          +(Number.isFinite(estAvgW) ? estAvgW.toFixed(2) : ''),
+          +(Number.isFinite(estAvgT) ? estAvgT.toFixed(2) : ''),
+          +(Number.isFinite(estProd) ? estProd.toFixed(3) : '')
+        ]);
+      }
+    }
+    // Create workbook and sheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    // Merge title row
+    if (!ws['!merges']) ws['!merges'] = [];
+    ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
+    // Style: thick borders and alignment
+    const thick = { style:'thick', color:{ rgb:'000000' } };
+    const nRows = rows.length;
+    const nCols = 4;
+    for (let r = 0; r < nRows; r++){
+      for (let c = 0; c < nCols; c++){
+        const addr = XLSX.utils.encode_cell({ r, c });
+        if (!ws[addr]) ws[addr] = { v:'' };
+        ws[addr].s = ws[addr].s || {};
+        ws[addr].s.border = { top: thick, bottom: thick, left: thick, right: thick };
+        const val = ws[addr].v;
+        const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+        const isDate = (typeof val === 'string') && /^\d{4}-\d{2}-\d{2}$/.test(val.trim());
+        if (isNumeric || isDate){
+          ws[addr].s.alignment = Object.assign({}, ws[addr].s.alignment || {}, { horizontal:'center', vertical:'center' });
+        }
+        if (r === 0){
+          ws[addr].s.font = Object.assign({}, ws[addr].s.font || {}, { bold:true, sz:14 });
+          ws[addr].s.alignment = { horizontal:'center', vertical:'center' };
+        }
+        if (r === 1){
+          ws[addr].s.font = Object.assign({}, ws[addr].s.font || {}, { bold:true });
+        }
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, ws, 'Extended');
+    const fname = `Extended_30day_${extDates[0]}_to_${extDates[extDates.length - 1]}.xlsx`;
+    XLSX.writeFile(wb, fname);
+  }
+  // Attach functions to window
+  window.generateExtendedPDF  = generateExtendedPDF;
+  window.exportExtendedExcel  = exportExtendedExcel;
+  // Attach click listeners after DOM ready
+  document.addEventListener('DOMContentLoaded', function(){
+    const epdfBtn = document.getElementById('extendedPdfBtn');
+    if (epdfBtn){
+      epdfBtn.addEventListener('click', function(){
+        const data = window.__lastForecast && window.__lastForecast.data;
+        const indices = window.__extendedIndices;
+        const windUnitUI = window.__lastForecast && window.__lastForecast.windUnit;
+        if (!data || !indices || !Array.isArray(indices)) {
+          alert(document.documentElement.lang === 'en' ? 'No data to export yet.' : 'لا توجد بيانات للتصدير بعد.');
+          return;
+        }
+        if (typeof window.generateExtendedPDF === 'function') {
+          window.generateExtendedPDF(data, indices, windUnitUI);
+        } else {
+          alert(document.documentElement.lang === 'en' ? 'Extended PDF generator not available.' : 'دالة توليد PDF للتوقع الممتد غير متاحة.');
+        }
+      });
+    }
+    const exlsBtn = document.getElementById('extendedXlsBtn');
+    if (exlsBtn){
+      exlsBtn.addEventListener('click', function(){
+        const data = window.__lastForecast && window.__lastForecast.data;
+        const indices = window.__extendedIndices;
+        const windUnitUI = window.__lastForecast && window.__lastForecast.windUnit;
+        if (!data || !indices || !Array.isArray(indices)) {
+          alert(document.documentElement.lang === 'en' ? 'No data to export yet.' : 'لا توجد بيانات للتصدير بعد.');
+          return;
+        }
+        if (typeof window.exportExtendedExcel === 'function') {
+          window.exportExtendedExcel(data, indices, windUnitUI);
+        } else {
+          alert(document.documentElement.lang === 'en' ? 'Extended Excel exporter not available.' : 'دالة تصدير Excel للتوقع الممتد غير متاحة.');
+        }
+      });
+    }
+  });
+})();
+</script>
+
+<!-- Extended forecast (30-day) handling -->
+<script id="rgwe-extended-forecast">
+(function(){
+  // Immediately invoked function to encapsulate extended forecast logic
+  document.addEventListener('DOMContentLoaded', function(){
+    const extendedSection = document.getElementById('extendedSection');
+    const extendedBody    = document.getElementById('extendedBody');
+    const extendedRangeEl = document.getElementById('extendedRange');
+    const extendedNoteEl  = document.getElementById('extendedNote');
+    const tabExtendedBtn  = document.getElementById('tabExtendedBtn');
+    // Even if extendedSection or its elements are missing (extended UI removed), we still define
+    // fetchExtendedForecast and helper functions. Do not return early here.
+
+    // Weather code descriptions copied from monthly script for independence
+    const descAr = {"0":"صحو","1":"صحو غالبًا","2":"غائم جزئيًا","3":"غائم","45":"ضباب","48":"ضباب مجمد","51":"رذاذ خفيف","53":"رذاذ متوسط","55":"رذاذ كثيف","56":"رذاذ مجمد خفيف","57":"رذاذ مجمد كثيف","61":"أمطار خفيفة","63":"أمطار معتدلة","65":"أمطار غزيرة","66":"أمطار متجمدة خفيفة","67":"أمطار متجمدة غزيرة","71":"ثلوج خفيفة","73":"ثلوج معتدلة","75":"ثلوج كثيفة","77":"حبيبات ثلج","80":"زخات أمطار خفيفة","81":"زخات أمطار متوسطة","82":"زخات أمطار غزيرة","85":"زخات ثلوج خفيفة","86":"زخات ثلوج غزيرة","95":"عواصف رعدية","96":"عواصف رعدية مع برد","99":"عواصف رعدية قوية مع برد"};
+    const descEn = {"0":"Clear","1":"Mainly clear","2":"Partly cloudy","3":"Overcast","45":"Fog","48":"Rime fog","51":"Light drizzle","53":"Moderate drizzle","55":"Dense drizzle","56":"Light freezing drizzle","57":"Dense freezing drizzle","61":"Slight rain","63":"Moderate rain","65":"Heavy rain","66":"Light freezing rain","67":"Heavy freezing rain","71":"Slight snow","73":"Moderate snow","75":"Heavy snow","77":"Snow grains","80":"Slight rain showers","81":"Moderate rain showers","82":"Violent rain showers","85":"Slight snow showers","86":"Heavy snow showers","95":"Thunderstorm","96":"Thunderstorm with slight hail","99":"Thunderstorm with heavy hail"};
+    function weatherDesc(code, lang){
+      const m = lang === 'en' ? descEn : descAr;
+      return m[String(code)] || '';
+    }
+    // Convert degrees to cardinal direction (copy of monthly degToDirection) but using global if available
+    function degToDir(deg, lang){
+      if (!Number.isFinite(deg)) return '';
+      const dirsEn = ['N','NE','E','SE','S','SW','W','NW'];
+      const dirsAr = ['شمال','شمال شرقي','شرق','جنوب شرقي','جنوب','جنوب غربي','غرب','شمال غربي'];
+      const dirs = lang === 'en' ? dirsEn : dirsAr;
+      const idx  = Math.round((((deg % 360) + 360) / 45)) % 8;
+      return dirs[idx];
+    }
+    // Fetch 16-day forecast then extend to 30 days by repeating last day's data
+    async function fetchExtendedForecast(lat, lon, count){
+      try{
+        const base = await window.fetchMonthlyForecast(lat, lon, 16);
+        // If base or daily data is missing, return as-is
+        if (!base || !base.daily) return base;
+        const d = base.daily;
+        // Helper to compute mean of numeric array
+        function mean(arr){
+          let s = 0, n = 0;
+          if(Array.isArray(arr)){
+            arr.forEach(v => { if(Number.isFinite(v)){ s += v; n++; } });
+          }
+          return n ? s / n : null;
+        }
+        // Compute means across available 16-day data
+        const meanTmax = mean(d.temperature_2m_max);
+        const meanTmin = mean(d.temperature_2m_min);
+        const meanWmax = mean(d.wind_speed_10m_max);
+        const meanGmax = mean(d.wind_gusts_10m_max);
+        // Compute standard deviations for variation when estimating extended values
+        function std(arr, m){
+          let s = 0, n = 0;
+          if(Array.isArray(arr)){
+            arr.forEach(v => { if(Number.isFinite(v)){ s += Math.pow(v - m, 2); n++; } });
+          }
+          return n ? Math.sqrt(s / n) : 0;
+        }
+        const stdTmax = std(d.temperature_2m_max, meanTmax);
+        const stdTmin = std(d.temperature_2m_min, meanTmin);
+        const stdWmax = std(d.wind_speed_10m_max, meanWmax);
+        const stdGmax = std(d.wind_gusts_10m_max, meanGmax);
+        // Use last available direction and weather code as proxies for extended period
+        const lastDir  = (d.wind_direction_10m_dominant || []).length ? d.wind_direction_10m_dominant[d.wind_direction_10m_dominant.length-1] : null;
+        const lastCode = (d.weathercode || []).length ? d.weathercode[d.weathercode.length-1] : null;
+        // Prepare extended daily arrays by cloning existing arrays
+        const ext = {
+          time: (d.time || []).slice(),
+          temperature_2m_max: (d.temperature_2m_max || []).slice(),
+          temperature_2m_min: (d.temperature_2m_min || []).slice(),
+          wind_speed_10m_max: (d.wind_speed_10m_max || []).slice(),
+          wind_gusts_10m_max: (d.wind_gusts_10m_max || []).slice(),
+          wind_direction_10m_dominant: (d.wind_direction_10m_dominant || []).slice(),
+          weathercode: (d.weathercode || []).slice()
+        };
+        const origLen = ext.time.length;
+        if (!origLen) return { daily: ext, hourly: base.hourly };
+        // Determine the last actual index where the maximum temperature is finite and strictly positive.
+        // Open‑Meteo occasionally returns 0 or negative values for missing days; treat those as missing so they are estimated.
+        let lastIdx = origLen - 1;
+        for (let k = origLen - 1; k >= 0; k--) {
+          const tv = ext.temperature_2m_max[k];
+          // Use strict > 0 to ignore zeros and negative values when searching for the last valid day
+          if (Number.isFinite(tv) && tv > 0) {
+            lastIdx = k;
+            break;
+          }
+        }
+        // Extend up to requested count days
+        // Determine number of additional days beyond original forecast
+        const extraCount = count - origLen;
+        // Capture last actual values for trending
+        const lastTmax = ext.temperature_2m_max[lastIdx];
+        const lastTmin = ext.temperature_2m_min[lastIdx];
+        const lastWmax = ext.wind_speed_10m_max[lastIdx];
+        const lastGmax = ext.wind_gusts_10m_max[lastIdx];
+        // Determine amplitude fallback: if std is zero or NaN, use 10% of mean (absolute)
+        const ampTmax = (Number.isFinite(stdTmax) && stdTmax > 0) ? stdTmax : (Number.isFinite(meanTmax) ? Math.abs(meanTmax) * 0.1 : 0);
+        const ampTmin = (Number.isFinite(stdTmin) && stdTmin > 0) ? stdTmin : (Number.isFinite(meanTmin) ? Math.abs(meanTmin) * 0.1 : 0);
+        const ampWmax = (Number.isFinite(stdWmax) && stdWmax > 0) ? stdWmax : (Number.isFinite(meanWmax) ? Math.abs(meanWmax) * 0.1 : 0);
+        const ampGmax = (Number.isFinite(stdGmax) && stdGmax > 0) ? stdGmax : (Number.isFinite(meanGmax) ? Math.abs(meanGmax) * 0.1 : 0);
+        for (let i = origLen; i < count; i++){
+          const j = i - origLen; // index within extended portion
+          // Create new date by adding days to the last actual date
+          const lastDate = new Date(ext.time[lastIdx] + 'T00:00:00');
+          lastDate.setDate(lastDate.getDate() + (i - lastIdx));
+          const iso = lastDate.toISOString().slice(0,10);
+          ext.time.push(iso);
+          // ratio 0..1 across extended portion; avoid divide by zero when one day
+          const r = (extraCount > 1) ? (j / (extraCount - 1)) : 0;
+          // sinusoidal factor peaking at mid interval
+          const sinFactor = Math.sin(r * Math.PI);
+          // For each variable compute trend from last actual toward mean and add sinusoidal variation
+          let valTmax = null, valTmin = null, valWmax = null, valGmax = null;
+          // Compute each value with trend; fallback to mean or last if one is non-finite
+          if (Number.isFinite(meanTmax) && Number.isFinite(lastTmax)){
+            const delta = lastTmax - meanTmax;
+            valTmax = meanTmax + delta * (1 - r) + sinFactor * ampTmax;
+          } else if (Number.isFinite(meanTmax)) {
+            valTmax = meanTmax + sinFactor * ampTmax;
+          } else if (Number.isFinite(lastTmax)) {
+            valTmax = lastTmax;
+          }
+          if (Number.isFinite(meanTmin) && Number.isFinite(lastTmin)){
+            const delta = lastTmin - meanTmin;
+            valTmin = meanTmin + delta * (1 - r) + sinFactor * ampTmin;
+          } else if (Number.isFinite(meanTmin)) {
+            valTmin = meanTmin + sinFactor * ampTmin;
+          } else if (Number.isFinite(lastTmin)) {
+            valTmin = lastTmin;
+          }
+          if (Number.isFinite(meanWmax) && Number.isFinite(lastWmax)){
+            const delta = lastWmax - meanWmax;
+            valWmax = meanWmax + delta * (1 - r) + sinFactor * ampWmax;
+          } else if (Number.isFinite(meanWmax)) {
+            valWmax = meanWmax + sinFactor * ampWmax;
+          } else if (Number.isFinite(lastWmax)) {
+            valWmax = lastWmax;
+          }
+          if (Number.isFinite(meanGmax) && Number.isFinite(lastGmax)){
+            const delta = lastGmax - meanGmax;
+            valGmax = meanGmax + delta * (1 - r) + sinFactor * ampGmax;
+          } else if (Number.isFinite(meanGmax)) {
+            valGmax = meanGmax + sinFactor * ampGmax;
+          } else if (Number.isFinite(lastGmax)) {
+            valGmax = lastGmax;
+          }
+          ext.temperature_2m_max.push(valTmax);
+          ext.temperature_2m_min.push(valTmin);
+          ext.wind_speed_10m_max.push(valWmax);
+          ext.wind_gusts_10m_max.push(valGmax);
+          // Copy last direction and weather code for extended days
+          ext.wind_direction_10m_dominant.push(lastDir);
+          ext.weathercode.push(lastCode);
+        }
+        // Fill any existing days after the last actual index (those with missing/zero values) using the same trend
+        // This ensures days within the original 16-day range that have zero values are estimated instead of showing 0.0
+        const totalSpan = count - lastIdx; // number of days including extended from last actual
+        for (let k = lastIdx + 1; k < origLen; k++){
+          const j2 = k - lastIdx;
+          const r2 = (totalSpan > 1) ? (j2 / (totalSpan - 1)) : 0;
+          const sinF = Math.sin(r2 * Math.PI);
+          // Estimate values with the same formula used for extended days
+          let eTmax = null, eTmin = null, eWmax = null, eGmax = null;
+          if (Number.isFinite(meanTmax) && Number.isFinite(lastTmax)){
+            const delta = lastTmax - meanTmax;
+            eTmax = meanTmax + delta * (1 - r2) + sinF * ampTmax;
+          } else if (Number.isFinite(meanTmax)) {
+            eTmax = meanTmax + sinF * ampTmax;
+          } else if (Number.isFinite(lastTmax)) {
+            eTmax = lastTmax;
+          }
+          if (Number.isFinite(meanTmin) && Number.isFinite(lastTmin)){
+            const delta = lastTmin - meanTmin;
+            eTmin = meanTmin + delta * (1 - r2) + sinF * ampTmin;
+          } else if (Number.isFinite(meanTmin)) {
+            eTmin = meanTmin + sinF * ampTmin;
+          } else if (Number.isFinite(lastTmin)) {
+            eTmin = lastTmin;
+          }
+          if (Number.isFinite(meanWmax) && Number.isFinite(lastWmax)){
+            const delta = lastWmax - meanWmax;
+            eWmax = meanWmax + delta * (1 - r2) + sinF * ampWmax;
+          } else if (Number.isFinite(meanWmax)) {
+            eWmax = meanWmax + sinF * ampWmax;
+          } else if (Number.isFinite(lastWmax)) {
+            eWmax = lastWmax;
+          }
+          if (Number.isFinite(meanGmax) && Number.isFinite(lastGmax)){
+            const delta = lastGmax - meanGmax;
+            eGmax = meanGmax + delta * (1 - r2) + sinF * ampGmax;
+          } else if (Number.isFinite(meanGmax)) {
+            eGmax = meanGmax + sinF * ampGmax;
+          } else if (Number.isFinite(lastGmax)) {
+            eGmax = lastGmax;
+          }
+          ext.temperature_2m_max[k] = eTmax;
+          ext.temperature_2m_min[k] = eTmin;
+          ext.wind_speed_10m_max[k] = eWmax;
+          ext.wind_gusts_10m_max[k] = eGmax;
+          // direction and weather code remain unchanged for base days
+        }
+        return { daily: ext, hourly: base.hourly };
+      }catch(err){ console.error(err); throw err; }
+    }
+    // Render the extended forecast table
+    function renderExtendedTable(forecast){
+      const isEN = document.documentElement.lang === 'en';
+      extendedBody.innerHTML = '';
+      if (!forecast || !forecast.daily || !Array.isArray(forecast.daily.time)){
+        extendedBody.innerHTML = `<tr><td colspan="7" class="py-2 px-3 text-red-600">${isEN ? 'No data available.' : 'لا توجد بيانات'}</td></tr>`;
+        extendedRangeEl.textContent = '';
+        return;
+      }
+      const times  = forecast.daily.time;
+      const tmax   = forecast.daily.temperature_2m_max || [];
+      const tmin   = forecast.daily.temperature_2m_min || [];
+      const wmax   = forecast.daily.wind_speed_10m_max || [];
+      const gusts  = forecast.daily.wind_gusts_10m_max || [];
+      const dirs   = forecast.daily.wind_direction_10m_dominant || [];
+      const codes  = forecast.daily.weathercode || [];
+      // Determine where original forecast ends (first 16 days) so we can mark extended rows
+      const baseLen = (window.__lastForecast && window.__lastForecast.data && window.__lastForecast.data.daily && Array.isArray(window.__lastForecast.data.daily.time)) ? window.__lastForecast.data.daily.time.length : 0;
+      for(let i=0; i<times.length; i++){
+        const tr = document.createElement('tr');
+        tr.className = i % 2 ? 'bg-gray-50 dark:bg-gray-900' : '';
+        if(i >= baseLen){
+          // Mark estimated rows with italic style and subtle color
+          tr.style.fontStyle = 'italic';
+          tr.style.color = '#555';
+        }
+        const dateISO = times[i];
+        const dateObj = new Date(dateISO + 'T00:00:00');
+        const locale = isEN ? 'en-GB' : 'ar-EG';
+        const row = [
+          dateObj.toLocaleDateString(locale,{day:'numeric', month:'numeric', year:'numeric'}),
+          Number.isFinite(tmax[i]) ? Number(tmax[i]).toFixed(2) : '',
+          Number.isFinite(tmin[i]) ? Number(tmin[i]).toFixed(2) : '',
+          Number.isFinite(wmax[i]) ? Number(wmax[i]).toFixed(2) : '',
+          Number.isFinite(gusts[i]) ? Number(gusts[i]).toFixed(2) : '',
+          Number.isFinite(dirs[i]) ? degToDir(dirs[i], isEN ? 'en' : 'ar') : '',
+          (codes[i] !== undefined ? weatherDesc(codes[i], isEN ? 'en' : 'ar') : '')
+        ];
+        row.forEach(cellText => {
+          const td = document.createElement('td');
+          td.className = 'py-2 px-3 text-right';
+          td.textContent = cellText;
+          tr.appendChild(td);
+        });
+        extendedBody.appendChild(tr);
+      }
+      // Range display
+      if (times.length){
+        const startDate = new Date(times[0] + 'T00:00:00');
+        const endDate   = new Date(times[times.length - 1] + 'T00:00:00');
+        const locale    = isEN ? 'en-GB' : 'ar-EG';
+        const prefix    = isEN ? 'Next period:' : 'الفترة القادمة:';
+        extendedRangeEl.textContent = `${prefix} ${startDate.toLocaleDateString(locale,{day:'numeric', month:'long'})} → ${endDate.toLocaleDateString(locale,{day:'numeric', month:'long'})}`;
+      } else {
+        extendedRangeEl.textContent = '';
+      }
+      // Hide any note; we do not display 16-day limit message
+      extendedNoteEl.textContent = '';
+    }
+    // Handle click on extended tab
+    async function handleExtended(){
+      const latInput = document.getElementById('lat');
+      const lonInput = document.getElementById('lon');
+      let lat = latInput && !isNaN(parseFloat(latInput.value)) ? parseFloat(latInput.value) : 0;
+      let lon = lonInput && !isNaN(parseFloat(lonInput.value)) ? parseFloat(lonInput.value) : 0;
+      const latStr = Number.isFinite(lat) ? lat.toFixed(4) : '0';
+      const lonStr = Number.isFinite(lon) ? lon.toFixed(4) : '0';
+      // Show loading row
+      extendedBody.innerHTML = `<tr><td colspan="7" class="py-2 px-3 text-center text-gray-500">${document.documentElement.lang === 'en' ? 'Loading…' : 'جاري جلب التوقع...'}</td></tr>`;
+      try{
+        const forecast = await fetchExtendedForecast(latStr, lonStr, 30);
+        renderExtendedTable(forecast);
+        // Compute indices for export: for days within available daily data (first 16), map actual index; for extra days, use last index
+        const extDates = forecast && forecast.daily && Array.isArray(forecast.daily.time) ? forecast.daily.time : [];
+        const dataDaily = (window.__lastForecast && window.__lastForecast.data && window.__lastForecast.data.daily && Array.isArray(window.__lastForecast.data.daily.time)) ? window.__lastForecast.data.daily.time : [];
+        const indices = extDates.map((d, i) => {
+          if (i < dataDaily.length) return dataDaily.indexOf(d);
+          else return dataDaily.length - 1;
+        });
+        window.__extendedDates   = extDates;
+        window.__extendedIndices = indices;
+        // Enable or disable export buttons based on indices
+        const epdf = document.getElementById('extendedPdfBtn');
+        const exls = document.getElementById('extendedXlsBtn');
+        const invalid = indices.some(i => i < 0 || !Number.isInteger(i));
+        if (epdf) epdf.disabled = invalid;
+        if (exls) exls.disabled = invalid;
+        // Set note: estimated days after the original forecast
+        const hasEst = extDates.length > dataDaily.length;
+        if (hasEst) {
+          const isEN = document.documentElement.lang === 'en';
+          extendedNoteEl.textContent = isEN ? 'Dates beyond day 16 are estimated based on the mean of previous days.' : 'التواريخ بعد اليوم 16 هي تقديرات تقريبية تعتمد على متوسط الأيام السابقة.';
+        } else {
+          extendedNoteEl.textContent = '';
+        }
+      }catch(err){
+        extendedBody.innerHTML = `<tr><td colspan="7" class="py-2 px-3 text-red-600">${document.documentElement.lang === 'en' ? 'Error fetching forecast.' : 'حدث خطأ أثناء جلب التوقع.'}</td></tr>`;
+        extendedRangeEl.textContent = '';
+        const epdf = document.getElementById('extendedPdfBtn');
+        const exls = document.getElementById('extendedXlsBtn');
+        if (epdf) epdf.disabled = true;
+        if (exls) exls.disabled = true;
+      }
+    }
+    // Attach handler to button
+    // Removed: no separate extended tab button to attach
+    // Expose functions globally for translation and export
+    window.handleExtended       = handleExtended;
+    window.renderExtendedTable  = renderExtendedTable;
+    window.fetchExtendedForecast= fetchExtendedForecast;
+    window.degToDir             = degToDir;
+    window.weatherDescExt       = weatherDesc;
+  });
+})();
+</script>
+<!-- Monthly PDF/Excel generators -->
+<script>
+(function(){
+  /**
+   * Generate a monthly PDF summarising daily averages and expected production.
+   * @param {object} data The forecast data object from Open‑Meteo (window.__lastForecast.data)
+   * @param {number[]} indices Array of daily index positions corresponding to the monthly view
+   * @param {string} windUnitUI The current wind speed unit (ms, kmh, mph, kn)
+   */
+  function generateMonthlyPDF(data, indices, windUnitUI){
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API.autoTable) {
+      alert(document.documentElement.lang === 'en' ? 'PDF library not available' : 'مكتبة PDF غير متوفرة');
+      return;
+    }
+    if (!data || !data.daily || !data.hourly) {
+      alert(document.documentElement.lang === 'en' ? 'No forecast data available.' : 'لا تتوفر بيانات التنبؤ.');
+      return;
+    }
+    const doc = new jsPDF({orientation:'portrait', unit:'pt', format:'a4'});
+    const margin = 40;
+    // Header: logo
+    try {
+      var logo = typeof LOGO_DATA_URL !== 'undefined' ? LOGO_DATA_URL : (window.LOGO_DATA_URL || '');
+      if (logo) {
+        const type = logo.indexOf('image/jpeg') > -1 ? 'JPEG' : 'PNG';
+        const pageW = doc.internal.pageSize.getWidth();
+        const logoW = 140, logoH = 40;
+        doc.addImage(logo, type, pageW - margin - logoW, 25, logoW, logoH);
+      }
+    } catch(e) { console.warn('monthly logo error', e); }
+    // Title (force English to ensure proper font rendering)
+    doc.setFont('helvetica','bold').setFontSize(16);
+    doc.text('Monthly Forecast – Expected Production (MW)', margin, 50);
+    doc.setFont('helvetica','normal').setFontSize(11);
+    // Location and period (always English)
+    const locLabel = 'Ras Ghareb Wind Energy (RGWE)';
+    const startISO = data.daily.time[indices[0]];
+    const endISO   = data.daily.time[indices[indices.length - 1]];
+    const startDateObj = new Date(startISO + 'T00:00:00');
+    const endDateObj   = new Date(endISO   + 'T00:00:00');
+    const periodStr = `${startDateObj.toLocaleDateString('en-GB',{day:'numeric', month:'long'})} → ${endDateObj.toLocaleDateString('en-GB',{day:'numeric', month:'long'})}`;
+    doc.text('Location: ' + locLabel, margin, 75);
+    doc.text('Period: ' + periodStr, margin, 95);
+    // Build rows: each day aggregated
+    const rows = [];
+    let totWind = 0, totTemp = 0, totProd = 0;
+    indices.forEach(function(dayIdx){
+      if (dayIdx < 0) return;
+      const dateISO = data.daily.time[dayIdx];
+      const hIdx = (typeof hoursForDay === 'function') ? hoursForDay(dayIdx, data.hourly.time).slice(0,24) : [];
+      let wSum=0, tSum=0, pSum=0, count=0;
+      hIdx.forEach(function(k){
+        const wVal = Array.isArray(getWindArray(data)) ? getWindArray(data)[k] : NaN;
+        const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+        const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+        const prod = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(wMs) : 0;
+        if (Number.isFinite(wMs)) { wSum += wMs; }
+        if (Number.isFinite(T)) { tSum += T; }
+        if (Number.isFinite(prod)) { pSum += prod; }
+        count++;
+      });
+      const avgW = count ? wSum / count : 0;
+      const avgT = count ? tSum / count : 0;
+      // Round values for table display
+      const avgWStr = Number.isFinite(avgW) ? avgW.toFixed(2) : '—';
+      const avgTStr = Number.isFinite(avgT) ? avgT.toFixed(2) : '—';
+      const prodStr = Number.isFinite(pSum) ? pSum.toFixed(3) : '—';
+      rows.push([dateISO, avgWStr, avgTStr, prodStr]);
+      totWind += Number(avgWStr) || 0;
+      totTemp += Number(avgTStr) || 0;
+      totProd += Number(prodStr) || 0;
+    });
+    // Table
+    const head = [
+      [
+        'Date',
+        'Avg wind (m/s)',
+        'Avg temp (°C)',
+        'Expected production (MW)'
+      ]
+    ];
+    doc.autoTable({
+      startY: 120,
+      styles: { font:'helvetica', fontSize: 10, cellPadding: 6, halign:'center' },
+      headStyles: { fillColor: [243,244,246], textColor: 20 },
+      head: head,
+      body: rows
+    });
+    const yAfter = doc.lastAutoTable.finalY || 120;
+    // Summary values
+    const dayCount = rows.length;
+    const avgWindAll = dayCount ? (totWind / dayCount) : 0;
+    const avgTempAll = dayCount ? (totTemp / dayCount) : 0;
+    doc.setFont('helvetica','bold');
+    doc.text('Summary', margin, yAfter + 30);
+    doc.setFont('helvetica','normal');
+    doc.text('Average wind speed (m/s): ' + avgWindAll.toFixed(2), margin, yAfter + 50);
+    doc.text('Average temperature (°C): ' + avgTempAll.toFixed(2), margin, yAfter + 70);
+    doc.text('Total expected production (MW): ' + totProd.toFixed(3), margin, yAfter + 90);
+    // Save
+    const filename = `MonthlyForecast_${startISO}_to_${endISO}.pdf`;
+    doc.save(filename);
+  }
+
+  /**
+   * Export a monthly Excel summarising daily averages and expected production.
+   * @param {object} data Forecast data from Open‑Meteo
+   * @param {number[]} indices Array of daily index positions
+   * @param {string} windUnitUI Selected wind unit
+   */
+  function exportMonthlyExcel(data, indices, windUnitUI){
+    function buildMonthlyRows(){
+      const rows = [];
+      if (!data || !data.daily || !data.hourly) return rows;
+      // Determine year from first date
+      const firstISO = data.daily.time[indices[0]];
+      const firstDate = new Date(firstISO + 'T00:00:00');
+      const year = firstDate.getFullYear();
+      // Title row merged across 4 columns
+      rows.push([`Forecasted Output Of The Facility, RGWE ${year}`, '', '', '']);
+      // Header row
+      rows.push(['Date','Average wind speed, m/s','Average temperature, °C','Expected production, MW']);
+      // Data rows
+      indices.forEach(function(dayIdx){
+        if (dayIdx < 0) return;
+        const dateISO = data.daily.time[dayIdx];
+        const hIdx = (typeof hoursForDay === 'function') ? hoursForDay(dayIdx, data.hourly.time).slice(0,24) : [];
+        let wSum=0, tSum=0, pSum=0, cnt=0;
+        hIdx.forEach(function(k){
+          const wVal = Array.isArray(getWindArray(data)) ? getWindArray(data)[k] : NaN;
+          const wMs  = (typeof convertToMs === 'function') ? convertToMs(wVal, windUnitUI) : NaN;
+          const T    = data.hourly.temperature_2m && data.hourly.temperature_2m[k];
+          const prod = (typeof expectedProductionMWFromSheet === 'function') ? expectedProductionMWFromSheet(wMs) : 0;
+          if (Number.isFinite(wMs)) { wSum += wMs; }
+          if (Number.isFinite(T)) { tSum += T; }
+          if (Number.isFinite(prod)) { pSum += prod; }
+          cnt++;
+        });
+        const avgW = cnt ? +(wSum / cnt).toFixed(2) : '';
+        const avgT = cnt ? +(tSum / cnt).toFixed(2) : '';
+        const totP = +(pSum.toFixed(3));
+        rows.push([dateISO, avgW, avgT, totP]);
+      });
+      return rows;
+    }
+    function buildWorkbook(rows){
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      // Merge title row across 4 columns
+      if (!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push({ s:{r:0,c:0}, e:{r:0,c:3} });
+      // Styling: thick borders and alignment
+      const thick = { style:'thick', color:{ rgb:'000000' } };
+      const nRows = rows.length;
+      const nCols = 4;
+      for (let r = 0; r < nRows; r++){
+        for (let c = 0; c < nCols; c++){
+          const addr = XLSX.utils.encode_cell({r, c});
+          if (!ws[addr]) ws[addr] = { v:'' };
+          ws[addr].s = ws[addr].s || {};
+          ws[addr].s.border = { top: thick, bottom: thick, left: thick, right: thick };
+          const val = ws[addr].v;
+          const isNumeric = (typeof val === 'number') || (typeof val === 'string' && val.trim() !== '' && !isNaN(Number(val)));
+          // Align numeric and date strings to center
+          const isDate = (typeof val === 'string') && /^\d{4}-\d{2}-\d{2}$/.test(val.trim());
+          if (isNumeric || isDate){
+            ws[addr].s.alignment = Object.assign({}, ws[addr].s.alignment || {}, { horizontal:'center', vertical:'center' });
+          }
+          // Title row styling
+          if (r === 0){
+            ws[addr].s.font = Object.assign({}, ws[addr].s.font || {}, { bold:true, sz:14 });
+            ws[addr].s.alignment = { horizontal:'center', vertical:'center' };
+          }
+          // Header row styling
+          if (r === 1){
+            ws[addr].s.font = Object.assign({}, ws[addr].s.font || {}, { bold:true });
+          }
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, ws, 'Monthly');
+      return wb;
+    }
+    // Use the already loaded XLSX library (xlsx-js-style is included in the page).
+    // If the library is unavailable, alert the user.
+    try {
+      if (!window.XLSX || !XLSX.utils || !(XLSX.writeFile || XLSX.write)) {
+        alert(document.documentElement.lang === 'en' ? 'Excel library not available.' : 'مكتبة Excel غير متوفرة.');
+        return;
+      }
+      const rows = buildMonthlyRows();
+      const wb   = buildWorkbook(rows);
+      const startISO = data.daily.time[indices[0]];
+      const endISO   = data.daily.time[indices[indices.length - 1]];
+      const fname = `MonthlyForecast_${startISO}_to_${endISO}.xlsx`;
+      // Prefer the helper saveWorkbook if available
+      if (typeof saveWorkbook === 'function') {
+        saveWorkbook(wb, fname);
+      } else if (XLSX.writeFile) {
+        XLSX.writeFile(wb, fname);
+      } else {
+        // Fallback: create blob and download manually
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 2000);
+      }
+    } catch(e) {
+      console.error(e);
+      alert(document.documentElement.lang === 'en' ? 'Error exporting Excel.' : 'حدث خطأ أثناء تصدير Excel.');
+    }
+  }
+  // Expose
+  window.generateMonthlyPDF = generateMonthlyPDF;
+  window.exportMonthlyExcel = exportMonthlyExcel;
+})();
+</script>
+<!-- سكربت التوقع الشهري باستخدام Open‑Meteo (16 يوم) -->
+<script id="rgwe-openmeteo-monthly">
+(function(){
+  // Defer initialization until the DOM is fully loaded to ensure monthlySection and related elements exist.
+  document.addEventListener('DOMContentLoaded', function(){
+    const monthlySection = document.getElementById('monthlySection');
+    const monthlyBody    = document.getElementById('monthlyBody');
+    const monthlyRangeEl = document.getElementById('monthlyRange');
+    const monthlyNoteEl  = document.getElementById('monthlyNote');
+    const tabMonthlyBtn  = document.getElementById('tabMonthlyBtn');
+    if (!monthlySection || !monthlyBody || !monthlyRangeEl || !monthlyNoteEl || !tabMonthlyBtn) return;
+    // Weather code descriptions in Arabic and English based on WMO codes
+    const descAr = {
+    "0": "مشمس",
+    "1": "صافٍ غالبًا",
+    "2": "غائم جزئيًا",
+    "3": "غائم",
+    "45": "ضباب",
+    "48": "ضباب مع صقيع",
+    "51": "رذاذ خفيف",
+    "53": "رذاذ متوسط",
+    "55": "رذاذ كثيف",
+    "56": "رذاذ متجمد خفيف",
+    "57": "رذاذ متجمد كثيف",
+    "61": "مطر خفيف",
+    "63": "مطر متوسط",
+    "65": "مطر غزير",
+    "66": "أمطار متجمدة خفيفة",
+    "67": "أمطار متجمدة غزيرة",
+    "71": "ثلوج خفيفة",
+    "73": "ثلوج متوسطة",
+    "75": "ثلوج كثيفة",
+    "77": "حبيبات ثلج",
+    "80": "زخات مطر خفيفة",
+    "81": "زخات مطر",
+    "82": "زخات مطر غزيرة",
+    "85": "زخات ثلوج خفيفة",
+    "86": "زخات ثلوج غزيرة",
+    "95": "عواصف رعدية",
+    "96": "عواصف رعدية مع برد",
+    "99": "عواصف رعدية قوية مع برد"
+    };
+    const descEn = {
+    "0": "Clear",
+    "1": "Mainly clear",
+    "2": "Partly cloudy",
+    "3": "Overcast",
+    "45": "Fog",
+    "48": "Rime fog",
+    "51": "Light drizzle",
+    "53": "Moderate drizzle",
+    "55": "Dense drizzle",
+    "56": "Light freezing drizzle",
+    "57": "Dense freezing drizzle",
+    "61": "Slight rain",
+    "63": "Moderate rain",
+    "65": "Heavy rain",
+    "66": "Light freezing rain",
+    "67": "Heavy freezing rain",
+    "71": "Slight snow",
+    "73": "Moderate snow",
+    "75": "Heavy snow",
+    "77": "Snow grains",
+    "80": "Slight rain showers",
+    "81": "Moderate rain showers",
+    "82": "Violent rain showers",
+    "85": "Slight snow showers",
+    "86": "Heavy snow showers",
+    "95": "Thunderstorm",
+    "96": "Thunderstorm with slight hail",
+    "99": "Thunderstorm with heavy hail"
+    };
+    function weatherDesc(code, lang){
+      const m = lang === 'en' ? descEn : descAr;
+      return m[String(code)] || '';
+    }
+
+    // Convert degrees to a cardinal direction (Arabic or English)
+    function degToDirection(deg, lang){
+      if (!Number.isFinite(deg)) return '';
+      const dirsEn = ['N','NE','E','SE','S','SW','W','NW'];
+      const dirsAr = ['شمال','شمال شرقي','شرق','جنوب شرقي','جنوب','جنوب غربي','غرب','شمال غربي'];
+      const dirs = lang === 'en' ? dirsEn : dirsAr;
+      const idx  = Math.round((((deg % 360) + 360) / 45)) % 8;
+      return dirs[idx];
+    }
+    async function fetchMonthlyForecast(lat, lon, days){
+      // Include additional daily variables for wind metrics and force wind speeds in m/s
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+                  `&daily=temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,weathercode`+
+                  `&forecast_days=${days}&timezone=auto&wind_speed_unit=ms`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    }
+    function renderMonthlyTable(forecast){
+      const daily = forecast.daily || {};
+      const times = daily.time || [];
+      const tmax  = daily.temperature_2m_max || [];
+      const tmin  = daily.temperature_2m_min || [];
+      const wmax  = daily.wind_speed_10m_max || [];
+      const gmax  = daily.wind_gusts_10m_max || [];
+      const dirs  = daily.wind_direction_10m_dominant || [];
+      const codes = daily.weathercode || [];
+      const isEN  = document.documentElement.lang === 'en';
+      // Clear table
+      monthlyBody.innerHTML = '';
+      // Build rows
+      for(let i=0; i<times.length; i++){
+        const tr = document.createElement('tr');
+        const date = times[i];
+        const max  = Number(tmax[i]);
+        const min  = Number(tmin[i]);
+        const wM   = Number(wmax[i]);
+        const gM   = Number(gmax[i]);
+        const dir  = Number(dirs[i]);
+        const code = codes[i];
+        const langKey = isEN ? 'en' : 'ar';
+        tr.innerHTML = `
+          <td class="py-1.5 px-3 text-right">${date}</td>
+          <td class="py-1.5 px-3 text-right">${Number.isFinite(max)?('°'+max.toFixed(1)):'—'}</td>
+          <td class="py-1.5 px-3 text-right">${Number.isFinite(min)?('°'+min.toFixed(1)):'—'}</td>
+          <td class="py-1.5 px-3 text-right">${Number.isFinite(wM)?wM.toFixed(1):'—'}</td>
+          <td class="py-1.5 px-3 text-right">${Number.isFinite(gM)?gM.toFixed(1):'—'}</td>
+          <td class="py-1.5 px-3 text-right">${degToDirection(dir, langKey)}</td>
+          <td class="py-1.5 px-3 text-right">${weatherDesc(code, langKey)}</td>
+        `;
+        monthlyBody.appendChild(tr);
+      }
+      // Set range description
+      if (times.length){
+        const first = times[0];
+        const last  = times[times.length-1];
+        const locale = isEN ? 'en-GB' : 'ar-EG';
+        const startDate = new Date(first+'T00:00:00');
+        const endDate   = new Date(last+'T00:00:00');
+        const prefix = isEN ? 'Next period:' : 'الشهر القادم:';
+        monthlyRangeEl.textContent = `${prefix} ${startDate.toLocaleDateString(locale,{day:'numeric', month:'long'})} → ${endDate.toLocaleDateString(locale,{day:'numeric', month:'long'})}`;
+      } else {
+        monthlyRangeEl.textContent = '';
+      }
+      // Clear any existing note. Do not display the open-meteo forecast limit message in the UI.
+      monthlyNoteEl.textContent = '';
+    }
+    async function handleMonthly(){
+      const latInput = document.getElementById('lat');
+      const lonInput = document.getElementById('lon');
+      let lat = latInput && !isNaN(parseFloat(latInput.value)) ? parseFloat(latInput.value) : 0;
+      let lon = lonInput && !isNaN(parseFloat(lonInput.value)) ? parseFloat(lonInput.value) : 0;
+      // Truncate coordinates to 4 decimal places to avoid API errors
+      const latStr = Number.isFinite(lat) ? lat.toFixed(4) : '0';
+      const lonStr = Number.isFinite(lon) ? lon.toFixed(4) : '0';
+      // Show loading across all columns
+      monthlyBody.innerHTML = `<tr><td colspan="7" class="py-2 px-3 text-center text-gray-500">${document.documentElement.lang === 'en' ? 'Loading…' : 'جاري جلب التوقع...'}</td></tr>`;
+      try{
+        // Fetch 30-day extended forecast: first 16 days actual + estimated days 17-30
+        const forecast = await fetchExtendedForecast(latStr, lonStr, 30);
+        // Render table with 30 days of data
+        renderMonthlyTable(forecast);
+        // Build date list and index mapping: for days beyond the original forecast length, use last index
+        const monthlyDates = (forecast && forecast.daily && Array.isArray(forecast.daily.time)) ? forecast.daily.time : [];
+        const dataDaily = (window.__lastForecast && window.__lastForecast.data && window.__lastForecast.data.daily && Array.isArray(window.__lastForecast.data.daily.time)) ? window.__lastForecast.data.daily.time : [];
+        const indices = monthlyDates.map((d,i) => {
+          if (i < dataDaily.length) {
+            return dataDaily.indexOf(d);
+          }
+          // Extended day: map to last available index
+          return dataDaily.length > 0 ? (dataDaily.length - 1) : -1;
+        });
+        window.__monthlyDates = monthlyDates;
+        window.__monthlyIndices = indices;
+        // Mirror extended indices/dates for export using extended functions
+        window.__extendedDates = monthlyDates;
+        window.__extendedIndices = indices;
+        // Enable or disable export buttons based on validity of indices
+        const mpdf = document.getElementById('monthlyPdfBtn');
+        const mxls = document.getElementById('monthlyXlsBtn');
+        const invalid = indices.some(i => i < 0 || !Number.isInteger(i));
+        if (mpdf) mpdf.disabled = invalid;
+        if (mxls) mxls.disabled = invalid;
+        // Display note if days beyond the original forecast exist
+        const hasEst = monthlyDates.length > dataDaily.length;
+        if (hasEst) {
+          const isEN = document.documentElement.lang === 'en';
+          monthlyNoteEl.textContent = isEN ? 'Dates beyond day 16 are estimated based on the mean of previous days.' : 'التواريخ بعد اليوم 16 هي تقديرات تقريبية تعتمد على متوسط الأيام السابقة.';
+        } else {
+          monthlyNoteEl.textContent = '';
+        }
+      }catch(e){
+        const isEN = document.documentElement.lang === 'en';
+        monthlyBody.innerHTML = `<tr><td colspan="7" class="py-2 px-3 text-red-600">${isEN ? 'Error fetching forecast.' : 'حدث خطأ أثناء جلب التوقع.'}</td></tr>`;
+        monthlyRangeEl.textContent = '';
+        // Disable export buttons when error
+        const mpdf = document.getElementById('monthlyPdfBtn');
+        const mxls = document.getElementById('monthlyXlsBtn');
+        if (mpdf) mpdf.disabled = true;
+        if (mxls) mxls.disabled = true;
+      }
+    }
+    // Trigger fetch when clicking the monthly tab
+    tabMonthlyBtn.addEventListener('click', handleMonthly);
+
+    // Expose key monthly helpers on the global window so other scripts (e.g. language
+    // switcher) can invoke them. Without this, functions defined in this closure
+    // are not reachable outside of the IIFE and the monthly panel cannot be
+    // refreshed when switching languages. Assigning these functions on
+    // `window` makes them available globally.
+    window.handleMonthly = handleMonthly;
+    window.renderMonthlyTable = renderMonthlyTable;
+    window.degToDirection = degToDirection;
+    window.fetchMonthlyForecast = fetchMonthlyForecast;
+
+    // Attach export handlers to monthly buttons after DOM loads
+    const mpdfBtn = document.getElementById('monthlyPdfBtn');
+    if (mpdfBtn) {
+      mpdfBtn.addEventListener('click', function(){
+        const data = window.__lastForecast && window.__lastForecast.data;
+        const indices = window.__monthlyIndices;
+        const windUnitUI = window.__lastForecast && window.__lastForecast.windUnit;
+        if (!data || !indices || !Array.isArray(indices)) { alert(document.documentElement.lang === 'en' ? 'No data to export yet.' : 'لا توجد بيانات للتصدير بعد.'); return; }
+        // Use extended PDF generator if available to support estimated days beyond 16
+        if (typeof window.generateExtendedPDF === 'function') {
+          window.generateExtendedPDF(data, indices, windUnitUI);
+        } else if (typeof window.generateMonthlyPDF === 'function') {
+          window.generateMonthlyPDF(data, indices, windUnitUI);
+        } else {
+          alert(document.documentElement.lang === 'en' ? 'PDF generator not loaded.' : 'دالة توليد PDF غير متاحة.');
+        }
+      });
+    }
+    const mxlsBtn = document.getElementById('monthlyXlsBtn');
+    if (mxlsBtn) {
+      mxlsBtn.addEventListener('click', function(){
+        const data = window.__lastForecast && window.__lastForecast.data;
+        const indices = window.__monthlyIndices;
+        const windUnitUI = window.__lastForecast && window.__lastForecast.windUnit;
+        if (!data || !indices || !Array.isArray(indices)) { alert(document.documentElement.lang === 'en' ? 'No data to export yet.' : 'لا توجد بيانات للتصدير بعد.'); return; }
+        // Use extended Excel exporter if available to support estimated days beyond 16
+        if (typeof window.exportExtendedExcel === 'function') {
+          window.exportExtendedExcel(data, indices, windUnitUI);
+        } else if (typeof window.exportMonthlyExcel === 'function') {
+          window.exportMonthlyExcel(data, indices, windUnitUI);
+        } else {
+          alert(document.documentElement.lang === 'en' ? 'Excel exporter not loaded.' : 'دالة تصدير Excel غير متاحة.');
+        }
+      });
+    }
+  });
 })();
 </script>
 
@@ -296,7 +1567,7 @@
 </div>
 <div class="bg-white rounded-2xl p-4 shadow">
 <label class="block text-sm text-gray-700 mb-1" for="emailCc">نسخة إلى (CC)</label>
-<input class="w-full border rounded-xl px-3 py-2" id="emailCc" placeholder="cc1@domain.com; cc2@domain.com" type="text" value="MANSOUR Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.mansour@rasgharebwind.com&gt;; FENYAR Amged (Ras Ghareb Wind Energy S.A.E.) &lt;amged.fenyar@rasgharebwind.com&gt;; ELMEHALAWY Wael (Ras Ghareb Wind Energy S.A.E.) &lt;wael.elmehalawy@rasgharebwind.com&gt;; AYMAN Nour (Ras Ghareb Wind Energy S.A.E.) &lt;nour.ayman@rasgharebwind.com&gt;; DANIAL Abanoub (Ras Ghareb Wind Energy S.A.E.) &lt;abanoub.danial@rasgharebwind.com&gt;; EL HOSENY Raafat (Ras Ghareb Wind Energy S.A.E.) &lt;raafat.elhoseny@rasgharebwind.com&gt;; ISMAIL Mahmoud (Ras Ghareb Wind Energy S.A.E.) &lt;mahmoud.ismail@rasgharebwind.com&gt;; LASHEEN Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.lasheen@rasgharebwind.com&gt;; SALAMA Ramy (Ras Ghareb Wind Energy S.A.E.) &lt;ramy.salama@rasgharebwind.com&gt;; FOUAD Ahmed (Ras Ghareb Wind Energy S.A.E.) &lt;ahmed.fouad@rasgharebwind.com&gt;; ABDELMAKSOUD Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.abdelmaksoud@rasgharebwind.com&gt;; MOHAMED Ali (Ras Ghareb Wind Energy S.A.E.) &lt;ali.mohamed@rasgharebwind.com&gt;; islam mohamoud &lt;islam.mahmoud@rgwe.co&gt;"/>
+<input class="w-full border rounded-xl px-3 py-2" id="emailCc" placeholder="cc1@domain.com; cc2@domain.com" type="text" value="MANSOUR Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.mansour@rasgharebwind.com&gt;; FENYAR Amged (Ras Ghareb Wind Energy S.A.E.) &lt;amged.fenyar@rasgharebwind.com&gt;; ELMEHALAWY Wael (Ras Ghareb Wind Energy S.A.E.) &lt;wael.elmehalawy@rasgharebwind.com&gt;; AYMAN Nour (Ras Ghareb Wind Energy S.A.E.) &lt;nour.ayman@rasgharebwind.com&gt;; DANIAL Abanoub (Ras Ghareb Wind Energy S.A.E.) &lt;abanoub.danial@rasgharebwind.com&gt;; EL HOSENY Raafat (Ras Ghareb Wind Energy S.A.E.) &lt;raafat.elhoseny@rasgharebwind.com&gt;; ISMAIL Mahmoud (Ras Ghareb Wind Energy S.A.E.) &lt;mahmoud.ismail@rasgharebwind.com&gt;; LASHEEN Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.lasheen@rasgharebwind.com&gt;; SALAMA Ramy (Ras Ghareb Wind Energy S.A.E.) &lt;ramy.salama@rasgharebwind.com&gt;; FOUAD Ahmed (Ras Ghareb Wind Energy S.A.E.) &lt;ahmed.fouad@rasgharebwind.com&gt;; ABDELMAKSOUD Mohamed (Ras Ghareb Wind Energy S.A.E.) &lt;mohamed.abdelmaksoud@rasgharebwind.com&gt;; MOHAMED Ali (Ras Ghareb Wind Energy S.A.E.) &lt;ali.mohamed@rasgharebwind.com&gt;; ibrahim.emad@rasgharebwind.com"/>
 <p class="text-xs text-gray-500 mt-1">يمكن كتابة أكثر من بريد مفصول بـ ; أو , وسيتم حفظه تلقائيًا.</p>
 </div>
 <div class="bg-white rounded-2xl p-4 shadow">
@@ -316,6 +1587,9 @@
 <section aria-label="View mode" class="mb-3 flex items-center gap-2" id="rgwe-tabs" role="tablist">
 <button aria-pressed="true" class="px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50" id="tabDailyBtn">الأيام القادمة</button>
 <button aria-pressed="false" class="px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100" id="tabWeeklyBtn">الأسبوع القادم (الأحد → السبت)</button>
+<button aria-pressed="false" class="px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100" id="tabMonthlyBtn">الشهر القادم</button>
+    <!-- زر التوقع الممتد (٣٠ يوم) -->
+    <!-- removed extended tab button -->
 </section>
 <section class="grid gap-4 md:grid-cols-2" id="cards"></section>
 <!-- لوحة الأسبوع القادم -->
@@ -330,6 +1604,36 @@
 <p class="text-xs text-gray-500 mt-3">PDF: صفحة لكل يوم. Excel: كل الأيام متتالية في شيت واحد.</p>
 </div>
 </section>
+<!-- لوحة الشهر القادم (16 يوم) -->
+<section class="hidden" id="monthlySection">
+  <div class="bg-white rounded-2xl p-4 shadow">
+    <!-- Range and export buttons -->
+    <div class="text-sm text-gray-600" id="monthlyRange"></div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-2xl" id="monthlyPdfBtn">توليد PDF للشهر</button>
+      <button class="bg-gray-800 hover:bg-black text-white text-sm px-4 py-2 rounded-2xl" id="monthlyXlsBtn">تحميل Excel للشهر (شيت واحد)</button>
+    </div>
+    <!-- Data table -->
+    <div class="overflow-auto mt-3">
+      <table class="min-w-full text-sm border-collapse">
+        <thead>
+          <tr class="bg-gray-100 dark:bg-gray-800">
+            <th class="py-2 px-3 text-right">التاريخ</th>
+            <th class="py-2 px-3 text-right">العظمى (°)</th>
+            <th class="py-2 px-3 text-right">الصغرى (°)</th>
+            <th class="py-2 px-3 text-right">سرعة الرياح القصوى (م/ث)</th>
+            <th class="py-2 px-3 text-right">هَبّات الرياح القصوى (م/ث)</th>
+            <th class="py-2 px-3 text-right">الاتجاه السائد</th>
+            <th class="py-2 px-3 text-right">الوصف</th>
+          </tr>
+        </thead>
+        <tbody id="monthlyBody"></tbody>
+      </table>
+    </div>
+    <p class="text-xs text-gray-500 mt-3" id="monthlyNote"></p>
+  </div>
+</section>
+<!-- removed extended forecast section -->
 </main>
 <footer class="max-w-6xl mx-auto p-6 text-center text-xs text-gray-500">
 <div id="rgweSignature" class="rgwe-signature"><span class="badge" aria-hidden="true">ML</span><span class="label">DESIGNED BY</span><span class="sep" aria-hidden="true"></span><strong class="name">Mohamed Lasheen</strong></div>
@@ -888,18 +2192,19 @@ XLSX.writeFile(wb, `Forecast_${dayISO}.xlsx`);
   url.searchParams.set('timezone', 'auto');
 
   // Variables used by the UI
-  url.searchParams.set('daily','temperature_2m_max,temperature_2m_min');
+  // Request daily aggregations including wind metrics for monthly exports
+  url.searchParams.set('daily','temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant');
   url.searchParams.set('hourly','temperature_2m,wind_speed_10m,wind_speed_80m,wind_speed_120m,wind_speed_180m');
   url.searchParams.set('windspeed_unit', windUnit);
 
   // Also fetch CURRENT conditions so the "today" card updates instantly
   // current param removed to avoid CORS/preflight issues; use hourly[0] as 'now' approximation
 
-  // Request explicit window: today -> +13 days
+  // Request explicit window: today -> +15 days to cover up to 16 days ahead
   const pad = n => String(n).padStart(2,'0');
   const now = new Date();
   const startISO = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-  const endDate  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 13);
+  const endDate  = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 15);
   const endISO   = `${endDate.getFullYear()}-${pad(endDate.getMonth()+1)}-${pad(endDate.getDate())}`;
   url.searchParams.set('start_date', startISO);
   url.searchParams.set('end_date',   endISO);
@@ -1042,14 +2347,57 @@ const locLabelAR = `${DEFAULT_LOCATION.name} (${lat.toFixed(4)}, ${lon.toFixed(4
         // Update tabs & weekly section labels in English
         const tabDailyBtn  = document.getElementById('tabDailyBtn');
         const tabWeeklyBtn = document.getElementById('tabWeeklyBtn');
+        const tabMonthlyBtn = document.getElementById('tabMonthlyBtn');
         const weeklyPdfBtn = document.getElementById('weeklyPdfBtn');
         const weeklyXlsBtn = document.getElementById('weeklyXlsBtn');
         const weeklyNote   = document.querySelector('#weeklySection p.text-xs');
         if (tabDailyBtn)  tabDailyBtn.textContent  = 'Upcoming days';
         if (tabWeeklyBtn) tabWeeklyBtn.textContent = 'Next week (Sun → Sat)';
+        // Update monthly tab label to indicate 30‑day coverage
+        if (tabMonthlyBtn) tabMonthlyBtn.textContent = 'Monthly (30‑day)';
         if (weeklyPdfBtn) weeklyPdfBtn.textContent = 'Generate weekly PDF';
         if (weeklyXlsBtn) weeklyXlsBtn.textContent = 'Download weekly Excel (one sheet)';
         if (weeklyNote)   weeklyNote.textContent   = 'PDF: one page per day. Excel: all days in a single sheet.';
+        // Update monthly buttons and note text in English
+        const monthlyPdfBtn = document.getElementById('monthlyPdfBtn');
+        const monthlyXlsBtn = document.getElementById('monthlyXlsBtn');
+        const monthlyNoteEl = document.getElementById('monthlyNote');
+        if (monthlyPdfBtn) monthlyPdfBtn.textContent = 'Generate monthly PDF';
+        if (monthlyXlsBtn) monthlyXlsBtn.textContent = 'Download monthly Excel (one sheet)';
+        if (monthlyNoteEl) monthlyNoteEl.textContent = 'PDF: one row per day. Excel: all days aggregated in a single sheet.';
+
+        // When switching to English, update the monthly table header labels to English
+        // and refresh the monthly panel if it is currently visible. The monthly table
+        // header cells are static in the HTML (Arabic by default), so we need to
+        // translate them manually here. Additionally, if the monthly tab is active
+        // and forecast data has already been fetched, call the exposed handleMonthly
+        // function to redraw the table with English labels and direction names.
+        const monthlySectionEl = document.getElementById('monthlySection');
+        if (monthlySectionEl) {
+          const ths = monthlySectionEl.querySelectorAll('thead th');
+          if (ths && ths.length >= 7) {
+            ths[0].textContent = 'Date';
+            ths[1].textContent = 'Max (°)';
+            ths[2].textContent = 'Min (°)';
+            ths[3].textContent = 'Max wind speed (m/s)';
+            ths[4].textContent = 'Max gusts (m/s)';
+            ths[5].textContent = 'Dominant direction';
+            ths[6].textContent = 'Description';
+          }
+          // If the monthly panel is currently visible and we have forecast data,
+          // refresh it to apply English labels and descriptions. This uses the
+          // globally exposed handleMonthly function (assigned in the monthly
+          // script) to re-fetch and re-render the monthly forecast. Without
+          // re-rendering, the direction labels and weather descriptions remain
+          // in the previous language.
+          try {
+            if (!monthlySectionEl.classList.contains('hidden') &&
+                typeof window.handleMonthly === 'function' &&
+                window.__lastForecast) {
+              window.handleMonthly();
+            }
+          } catch(err) { console.error(err); }
+        }
         // Re-render cards + weekly panel in English if data already loaded
         if (window.__lastForecast) {
           try {
@@ -1174,31 +2522,47 @@ const locLabelAR = `${DEFAULT_LOCATION.name} (${lat.toFixed(4)}, ${lon.toFixed(4
   </script>
 <script>
 (function(){
-  const weeklySection = document.getElementById('weeklySection');
-  const cardsSection  = document.getElementById('cards');
-  const tabDailyBtn   = document.getElementById('tabDailyBtn');
-  const tabWeeklyBtn  = document.getElementById('tabWeeklyBtn');
-  const weeklyRangeEl = document.getElementById('weeklyRange');
-  const weeklyPdfBtn  = document.getElementById('weeklyPdfBtn');
-  const weeklyXlsBtn  = document.getElementById('weeklyXlsBtn');
+  const weeklySection  = document.getElementById('weeklySection');
+  const monthlySection = document.getElementById('monthlySection');
+  // Include extended forecast section
+  const extendedSection= document.getElementById('extendedSection');
+  const cardsSection   = document.getElementById('cards');
+  const tabDailyBtn    = document.getElementById('tabDailyBtn');
+  const tabWeeklyBtn   = document.getElementById('tabWeeklyBtn');
+  const tabMonthlyBtn  = document.getElementById('tabMonthlyBtn');
+  // Weekly range and export elements
+  const weeklyRangeEl  = document.getElementById('weeklyRange');
+  const weeklyPdfBtn   = document.getElementById('weeklyPdfBtn');
+  const weeklyXlsBtn   = document.getElementById('weeklyXlsBtn');
 
-  if (!weeklySection || !cardsSection || !tabDailyBtn || !tabWeeklyBtn) return;
+  // Abort initialization if required elements are missing (extended tab removed)
+  if (!weeklySection || !monthlySection || !cardsSection || !tabDailyBtn || !tabWeeklyBtn || !tabMonthlyBtn) return;
 
   function setTab(active){
+    // Hide all forecast sections first
+    weeklySection.classList.add('hidden');
+    monthlySection.classList.add('hidden');
+    cardsSection.classList.add('hidden');
+    // Reset all tab classes
+    tabDailyBtn.className    = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+    tabWeeklyBtn.className   = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+    tabMonthlyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
     if (active === 'weekly'){
       weeklySection.classList.remove('hidden');
-      cardsSection.classList.add('hidden');
-      tabWeeklyBtn.className = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
-      tabDailyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+      tabWeeklyBtn.className   = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
+    } else if (active === 'monthly'){
+      monthlySection.classList.remove('hidden');
+      tabMonthlyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
     } else {
-      weeklySection.classList.add('hidden');
+      // default to daily
       cardsSection.classList.remove('hidden');
-      tabDailyBtn.className  = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
-      tabWeeklyBtn.className = 'px-3 py-1.5 rounded-2xl border border-gray-200 text-gray-700 hover:bg-gray-100';
+      tabDailyBtn.className    = 'px-3 py-1.5 rounded-2xl border border-emerald-600 text-emerald-700 bg-emerald-50';
     }
   }
   tabDailyBtn.addEventListener('click', ()=> setTab('daily'));
   tabWeeklyBtn.addEventListener('click', ()=> setTab('weekly'));
+  tabMonthlyBtn.addEventListener('click', ()=> setTab('monthly'));
+  // Extended tab removed
 
   // Helpers
   function ymdLocal(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }

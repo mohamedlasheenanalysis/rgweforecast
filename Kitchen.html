@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>إدارة الاستهلاك — تقرير مبسّط + طباعة مباشرة (v9.0)</title>
+  <style>
+    :root{
+      --bg:#f6f8fc; --bg2:#eef2f9; --panel:#ffffff; --surface:#ffffff;
+      --text:#0f172a; --muted:#64748b; --border:#e2e8f0;
+      --primary:#2563eb; --primary-700:#1d4ed8; --accent:#06b6d4;
+      --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+      --radius:18px; --shadow:0 12px 28px rgba(2,8,23,.08);
+      --fs:18px; --scale:1.12;
+    }
+    :root[data-theme='dark']{
+      --bg:#0b1020; --bg2:#0e162d; --panel:#0f1b38; --surface:#121f41;
+      --text:#e9f0ff; --muted:#94a3b8; --border:#1f2a44;
+      --primary:#3b82f6; --primary-700:#2563eb; --accent:#22d3ee;
+      --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+      --shadow:0 12px 28px rgba(0,0,0,.28);
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{ margin:0; font-family:system-ui, "Noto Naskh Arabic", "Noto Sans Arabic", Arial, sans-serif;
+      font-size:var(--fs); color:var(--text);
+      background: radial-gradient(1200px 600px at 85% -10%, var(--bg2) 0%, var(--bg) 55%); }
+    .app{display:grid; grid-template-columns: 280px 1fr; min-height:100vh}
+    aside{ background: linear-gradient(180deg, color-mix(in oklab, var(--surface) 86%, black 8%), color-mix(in oklab, var(--surface) 86%, black 0%));
+      border-inline-end:1px solid var(--border); padding:18px; position:sticky; top:0; height:100vh; }
+    .brand{display:flex; align-items:center; gap:10px; margin-bottom:18px}
+    .logo{width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,var(--primary),var(--accent))}
+    .brand h2{margin:0; font-size:1.15rem; letter-spacing:.3px}
+    .nav{display:flex; flex-direction:column; gap:8px; margin-top:12px}
+    .nav button{ text-align:right; background:transparent; border:1px solid transparent; color:var(--text);
+      padding:12px 14px; border-radius:12px; cursor:pointer; font-weight:700 }
+    .nav button:hover{ background:color-mix(in oklab, var(--panel), black 6%); border-color:var(--border) }
+    .nav .active{ background:color-mix(in oklab, var(--panel), black 4%); border-color:var(--border) }
+    header{ position:sticky; top:0; z-index:20;
+      background: linear-gradient(180deg, color-mix(in oklab, var(--panel), transparent 10%), color-mix(in oklab, var(--panel), transparent 60%));
+      backdrop-filter: blur(8px); border-bottom:1px solid var(--border); }
+    .topbar{display:flex; align-items:center; gap:16px; padding:16px 20px}
+    h1{margin:0; font-size:1.35rem} .muted{color:var(--muted)} .push{margin-inline-start:auto}
+    .zoom{display:flex; align-items:center; gap:10px} .zoom input[type='range']{ width:180px }
+    main{ padding:20px; transform-origin: top right; transform: scale(var(--scale)); }
+    .grid{display:grid; gap:18px} @media (min-width: 1200px){ .grid-3{grid-template-columns:1.2fr 1fr 1fr} .grid-2{grid-template-columns:1fr 1fr} }
+    .card{ background: color-mix(in oklab, var(--panel), white 0%); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow) }
+    .section-title{display:flex; align-items:center; gap:12px; margin:0 0 10px}
+    .section-title h3{margin:0; font-size:1.2rem}
+    label{display:block; font-size:.95rem; color:var(--muted); margin:0 0 8px}
+    input,select,button{ width:100%; padding:14px 14px; border-radius:12px; border:1px solid var(--border);
+      background:color-mix(in oklab, var(--panel), black 6%); color:var(--text); font-size:1rem }
+    input:focus,select:focus{ border-color:var(--primary); box-shadow:0 0 0 4px color-mix(in oklab, var(--primary) 30%, transparent); outline:none }
+    button{ cursor:pointer; font-weight:800; letter-spacing:.3px; transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease }
+    button:active{ transform: translateY(1px) scale(.99) }
+    .btn{ border-color:color-mix(in oklab, var(--border), black 6%) }
+    .btn-primary{ background: linear-gradient(90deg, var(--primary-700), var(--primary)); color:#fff; }
+    .btn-ghost{ background: transparent; }
+    .btn-ok{ background: var(--ok); color:#fff }
+    .btn-warn{ background: var(--warn); color:#fff }
+    .btn-danger{ background: var(--danger); color:#fff }
+    .btn-sm{ padding:10px 12px; font-size:.95rem }
+    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap} .spacer{height:10px}
+    .table-wrap{ max-height: 430px; overflow:auto; border-radius:14px; border:1px solid var(--border) }
+    table{width:100%; border-collapse:separate; border-spacing:0 6px}
+    thead th{position:sticky; top:0; background:#e5e7eb; padding:12px; color:#111; font-size:.95rem; border-bottom:1px solid var(--border)}
+    tbody td{ background:#fff; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:12px; font-size:1.02rem }
+    tbody tr td:first-child{ border-radius:12px 0 0 12px } tbody tr td:last-child{ border-radius:0 12px 12px 0 }
+    tbody tr:hover td{ outline:1px dashed #d1d5db; outline-offset:-1px }
+    .pill{display:inline-flex;align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); color:var(--muted); font-size:.9rem}
+    .pill-ok{ background:#ecfdf5; color:#166534; border-color:#86efac }
+    .pill-warn{ background:#fffbeb; color:#92400e; border-color:#fcd34d }
+    .pill-danger{ background:#fef2f2; color:#991b1b; border-color:#fecaca }
+    .notice{margin-top:12px; font-size:.9rem; padding:10px; border-radius:12px; background:#f0f9ff; border:1px dashed #93c5fd; color:#0c4a6e}
+
+    /* PIN modal */
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:5000 }
+    .modal{ width:min(420px, 92vw); background:#fff; border:1px solid #ddd; border-radius:16px; padding:18px; box-shadow:0 12px 28px rgba(0,0,0,.25) }
+    .modal h4{ margin:0 0 6px } .modal .muted{ margin-bottom:10px } .modal .actions{ display:flex; gap:10px; margin-top:10px }
+
+    @media print{
+      :root{ color-scheme: light; }
+      body{ background:#fff !important; color:#111 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      header,aside,.app:not(.printable),footer{display:none!important}
+      #printArea{display:block!important}
+      table{page-break-inside:avoid}
+      .card{ background:#fff !important; box-shadow:none !important; border-color:#ddd !important }
+    }
+  
+/* === Dark mode high-contrast table & controls fixes === */
+:root[data-theme='dark'] .card{ background:#0f1b38; border-color:#1f2a44; }
+:root[data-theme='dark'] .table-wrap{ border-color:#1f2a44; }
+:root[data-theme='dark'] thead th{
+  background:#1e293b !important;
+  color:#e2e8f0 !important;
+  border-bottom:1px solid #1f2a44 !important;
+}
+:root[data-theme='dark'] tbody td{
+  background:#0f1b38 !important;
+  color:#e9f0ff !important;
+  border-top:1px solid #1f2a44 !important;
+  border-bottom:1px solid #1f2a44 !important;
+}
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] button{
+  background:#0f1b38;
+  color:#e9f0ff;
+  border-color:#1f2a44;
+}
+:root[data-theme='dark'] .pill-ok{ background:rgba(34,197,94,.16); color:#86efac; border-color:rgba(34,197,94,.55); }
+:root[data-theme='dark'] .pill-warn{ background:rgba(245,158,11,.16); color:#facc15; border-color:rgba(245,158,11,.55); }
+:root[data-theme='dark'] .pill-danger{ background:rgba(239,68,68,.16); color:#fca5a5; border-color:rgba(239,68,68,.55); }
+:root[data-theme='dark'] thead th, 
+:root[data-theme='dark'] tbody td { text-shadow:none; }
+
+
+/* توقيع أسفل الشريط الجانبي */
+aside{ display:flex; flex-direction:column; }
+.side-signature-footer{
+  margin-top:auto;
+  padding:8px 6px;
+  text-align:center;
+  font-size:.95rem;
+  color: var(--muted);
+}
+:root[data-theme='dark'] .side-signature-footer{ color:#9fb1d1; }
+@media print{ .side-signature-footer{ display:none } }
+
+
+/* ================= MONOCHROME BLUE THEME — كل الواجهة بدرجات الأزرق ================= */
+/* درجات عامة */
+:root{
+  --blue-25:#F5FAFF;
+  --blue-50:#EFF6FF;
+  --blue-100:#E0EEFF;
+  --blue-200:#CFE3FF;
+  --blue-300:#AFCFFF;
+  --blue-400:#7FB3FF;
+  --blue-500:#4F97FF;
+  --blue-600:#2F80FF;
+  --blue-700:#1E66E6;
+  --blue-800:#184DB8;
+  --blue-900:#123A8A;
+}
+
+/* Light */
+:root{
+  --bg:var(--blue-25);
+  --bg2:var(--blue-50);
+  --panel:#FFFFFF;
+  --surface:#FFFFFF;
+  --text:#0A0F1A;       /* أسود غامق للقراءة */
+  --muted:#4B5568;      /* رمادي مزرق */
+  --border:var(--blue-200);
+
+  --primary:var(--blue-600);
+  --primary-700:var(--blue-700);
+  --accent:var(--blue-500);   /* نفس العائلة */
+  --ok:var(--blue-600);
+  --warn:var(--blue-700);
+  --danger:var(--blue-800);
+
+  --radius:16px;
+  --shadow:0 12px 26px rgba(24, 77, 184, .08);
+  --fs:18px; --scale:1.12;
+}
+
+/* Dark */
+:root[data-theme='dark']{
+  --bg:#0B1424;
+  --bg2:#0C1A2F;
+  --panel:#0F1E35;
+  --surface:#0B162A;
+  --text:#EAF2FF;
+  --muted:#A9BDE0;
+  --border:#1C2E52;
+
+  --primary:#4F97FF;
+  --primary-700:#2F80FF;
+  --accent:#7FB3FF;
+  --ok:#4F97FF;
+  --warn:#2F80FF;
+  --danger:#1E66E6;
+
+  --shadow:0 12px 26px rgba(0,0,0,.28);
+}
+
+/* خلفية الصفحة */
+body{
+  background:
+    radial-gradient(1200px 600px at 85% -10%, var(--bg2) 0%, var(--bg) 55%);
+  color:var(--text);
+}
+
+/* الشريط الجانبي والهوية */
+aside{
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--surface) 94%, black 6%),
+    color-mix(in oklab, var(--surface) 94%, black 0%));
+  border-inline-end:1px solid var(--border);
+}
+.logo{ background:linear-gradient(135deg, var(--primary), var(--blue-400)); }
+.nav button:hover{ background: color-mix(in oklab, var(--primary) 10%, var(--panel)); }
+.nav .active{
+  background: color-mix(in oklab, var(--primary) 16%, var(--panel));
+  border-color: color-mix(in oklab, var(--primary), var(--border));
+}
+
+/* البطاقات */
+.card{ background:var(--panel); border:1px solid var(--border);
+  border-radius:var(--radius); box-shadow:var(--shadow) }
+
+/* حقول الإدخال والقوائم */
+input,select{
+  background: color-mix(in oklab, var(--panel), black 2%);
+  border:1px solid var(--border);
+  color:var(--text);
+  border-radius:12px;
+}
+input::placeholder, select::placeholder{ color: color-mix(in oklab, var(--muted), white 20%); }
+input:focus,select:focus{
+  border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--primary) 18%, transparent);
+  outline:none;
+}
+
+/* الجداول */
+.table-wrap{ border:1px solid var(--border) }
+thead th{
+  background: var(--blue-100) !important;
+  color:#0A0F1A !important;
+  border-bottom:1px solid var(--border) !important;
+}
+:root[data-theme='dark'] thead th{ background:#132744 !important; color:#EAF2FF !important; }
+tbody td{ background:var(--panel) !important; color:var(--text) !important;
+  border-top:1px solid var(--border) !important; border-bottom:1px solid var(--border) !important; }
+
+/* الحبوب (Pills) كلها زُرق */
+.pill{ border-color:var(--border) }
+.pill-ok{ background: color-mix(in oklab, var(--ok), transparent 86%); color: color-mix(in oklab, var(--ok), black 5%); border-color: color-mix(in oklab, var(--ok), transparent 60%); }
+.pill-warn{ background: color-mix(in oklab, var(--warn), transparent 86%); color: color-mix(in oklab, var(--warn), black 5%); border-color: color-mix(in oklab, var(--warn), transparent 60%); }
+.pill-danger{ background: color-mix(in oklab, var(--danger), transparent 86%); color: color-mix(in oklab, var(--danger), black 5%); border-color: color-mix(in oklab, var(--danger), transparent 60%); }
+
+/* الأزرار — شكل احترافي بدرجات الأزرق فقط */
+button.btn{
+  border:1px solid color-mix(in oklab, var(--border), black 6%);
+  border-radius:14px; font-weight:800; letter-spacing:.3px; padding:12px 16px;
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--panel), black 1%),
+    color-mix(in oklab, var(--panel), black 7%));
+  color:var(--text);
+  box-shadow: 0 8px 22px rgba(18,58,138,.10), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+}
+button.btn:hover{ filter: brightness(1.02); box-shadow: 0 10px 26px rgba(18,58,138,.14), inset 0 1px 0 rgba(255,255,255,.22); }
+button.btn:active{ transform: translateY(1px) scale(.995); }
+.btn-primary{ color:#fff;
+  border-color:color-mix(in oklab, var(--primary-700), black 10%);
+  background:linear-gradient(180deg, var(--primary-700), var(--primary));
+  box-shadow:0 10px 26px color-mix(in oklab, var(--primary), transparent 72%);
+}
+.btn-ok{ color:#fff;
+  border-color:color-mix(in oklab, var(--ok), black 10%);
+  background:linear-gradient(180deg, color-mix(in oklab, var(--ok), black 3%), var(--ok));
+}
+.btn-warn{ color:#fff;
+  border-color:color-mix(in oklab, var(--warn), black 10%);
+  background:linear-gradient(180deg, color-mix(in oklab, var(--warn), black 3%), var(--warn));
+}
+.btn-danger{ color:#fff;
+  border-color:color-mix(in oklab, var(--danger), black 10%);
+  background:linear-gradient(180deg, color-mix(in oklab, var(--danger), black 3%), var(--danger));
+}
+.btn-ghost{ background:transparent; color:var(--text); border-color:var(--border); }
+
+/* توقيع أسفل الشريط الجانبي */
+aside{ display:flex; flex-direction:column; }
+.side-signature-footer{ margin-top:auto; padding:8px 6px 12px; text-align:center; font-size:.95rem; color:var(--muted) }
+:root[data-theme='dark'] .side-signature-footer{ color:#A9BDE0 }
+@media print{ .side-signature-footer{ display:none } }
+
+
+/* ===== Force all action buttons to Blue look ===== */
+button.btn{
+  background: linear-gradient(180deg, var(--blue-100), var(--blue-200)) !important;
+  color: var(--text) !important;
+  border-color: var(--blue-300) !important;
+  box-shadow: 0 8px 22px rgba(18,58,138,.10), inset 0 1px 0 rgba(255,255,255,.18) !important;
+}
+button.btn:hover{ background: linear-gradient(180deg, var(--blue-200), var(--blue-300)) !important; }
+button.btn:active{ background: linear-gradient(180deg, var(--blue-300), var(--blue-400)) !important; }
+
+/* Filled variants — كلها أزرق بدرجات أقوى */
+.btn-primary,
+.btn-ok,
+.btn-warn,
+.btn-danger{
+  color:#fff !important;
+  border-color: color-mix(in oklab, var(--primary-700), black 10%) !important;
+  background: linear-gradient(180deg, var(--primary-700), var(--primary)) !important;
+  box-shadow: 0 10px 26px color-mix(in oklab, var(--primary), transparent 72%) !important;
+}
+/* Ghost variant كمان أزرق فاتح */
+.btn-ghost{
+  background: linear-gradient(180deg, var(--blue-50), var(--blue-100)) !important;
+  color: var(--text) !important;
+  border-color: var(--blue-300) !important;
+}
+
+
+/* === Make 'المتبقي' look like plain text (no color/border/pill) === */
+.pill{
+  background: transparent !important;
+  border-color: transparent !important;
+  padding: 0 !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+
+/* تفاصيل العناصر داخل ملخص المكان */
+#byPlace td{ vertical-align: top; }
+
+
+/* ================= Dark Mode Contrast Fixes ================= */
+:root[data-theme='dark']{
+  /* ألوان أوضح في الداكن */
+  --bg:#0b1420;
+  --bg2:#0e1b2a;
+  --panel:#112035;     /* البطاقات */
+  --surface:#0e1a2a;
+  --text:#F2F6FF;      /* نص فاتح جدًا لقراءة أفضل */
+  --muted:#C3D2E8;     /* نص ثانوي فاتح */
+  --border:#294667;    /* حدود أنور */
+  --primary:#6aa8ff;   /* أزرق مناسب للداكن */
+  --primary-700:#4f91f0;
+  --accent:#58d0c7;
+}
+
+/* نصوص عامة */
+:root[data-theme='dark'] label,
+:root[data-theme='dark'] .muted{ color: var(--muted) !important; }
+:root[data-theme='dark'] h1, 
+:root[data-theme='dark'] h2, 
+:root[data-theme='dark'] h3, 
+:root[data-theme='dark'] h4, 
+:root[data-theme='dark'] h5, 
+:root[data-theme='dark'] p,
+:root[data-theme='dark'] span,
+:root[data-theme='dark'] small{ color: var(--text); }
+
+/* عناصر الإدخال */
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select{
+  background:#12263f !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] select::placeholder{ color:#d3def0 !important; }
+
+/* أزرار */
+:root[data-theme='dark'] button.btn{
+  color: var(--text);
+  border-color: var(--border);
+  background: linear-gradient(180deg, #162b49, #12263f);
+  box-shadow: 0 8px 22px rgba(10,30,60,.18), inset 0 1px 0 rgba(255,255,255,.05);
+}
+:root[data-theme='dark'] .btn-primary{
+  color:#fff !important;
+  border-color: color-mix(in oklab, var(--primary-700), black 10%) !important;
+  background: linear-gradient(180deg, var(--primary-700), var(--primary)) !important;
+}
+:root[data-theme='dark'] .btn-ghost{
+  background: #152a48 !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+:root[data-theme='dark'] button.btn:disabled{
+  background:#1b3357 !important;
+  color:#c7d6f0 !important;
+  opacity: .9;
+}
+
+/* الجداول */
+:root[data-theme='dark'] thead th{
+  background:#18365e !important;
+  color:#f2f6ff !important;
+  border-bottom:1px solid var(--border) !important;
+}
+:root[data-theme='dark'] tbody td{
+  background:#112035 !important;
+  color: var(--text) !important;
+  border-top:1px solid var(--border) !important;
+  border-bottom:1px solid var(--border) !important;
+}
+
+/* الـ pills */
+:root[data-theme='dark'] .pill{ border-color:#34557c; color:#e6efff; }
+:root[data-theme='dark'] .pill-ok{ background: rgba(52, 211, 153, .18); color:#a8f3d2; border-color:#3aa981; }
+:root[data-theme='dark'] .pill-warn{ background: rgba(245, 158, 11, .18); color:#ffd8a1; border-color:#e3b15a; }
+:root[data-theme='dark'] .pill-danger{ background: rgba(239, 68, 68, .2); color:#ffb4b4; border-color:#ef7b7b; }
+
+/* الشريط الجانبي */
+:root[data-theme='dark'] aside{
+  background: linear-gradient(180deg, #111d30, #0f1828);
+  border-inline-end: 1px solid var(--border);
+}
+:root[data-theme='dark'] .nav button{ color: var(--text); }
+:root[data-theme='dark'] .nav button:hover{ background:#1a2f50; }
+:root[data-theme='dark'] .nav .active{
+  background:#1f3a63;
+  border-color:#3b5f8e;
+}
+
+/* توقيع الأسفل */
+:root[data-theme='dark'] .side-signature-footer{ color:#d1dbef; }
+
+
+/* ==== Extra dark-mode fixes for low-contrast buttons (those two sections) ==== */
+:root[data-theme='dark'] button.btn{
+  background: linear-gradient(180deg, #173153, #122a49) !important;
+  color: #F2F6FF !important;
+  border-color: #3a5b86 !important;
+  text-shadow: none !important;
+}
+:root[data-theme='dark'] .btn-ghost{
+  background: #13294a !important;
+  color: #E9F2FF !important;
+  border-color: #3a5b86 !important;
+}
+:root[data-theme='dark'] .btn-primary,
+:root[data-theme='dark'] .btn-ok,
+:root[data-theme='dark'] .btn-warn,
+:root[data-theme='dark'] .btn-danger{
+  color:#ffffff !important;
+  border-color:#3c64a3 !important;
+  background: linear-gradient(180deg, #2a58a0, #1e4584) !important;
+  box-shadow: 0 10px 26px rgba(22, 60, 120, .32) !important;
+}
+:root[data-theme='dark'] button.btn:disabled{
+  background:#1a355d !important;
+  color:#cfe0ff !important;
+  opacity:.95 !important;
+  border-color:#365a8e !important;
+}
+
+
+/* ======= Site Password Gate ======= */
+body.locked{ overflow:hidden }
+#authGate{
+  position: fixed; inset: 0; display:none; z-index: 9999;
+  align-items: center; justify-content: center;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg), black 10%), color-mix(in oklab, var(--bg2), black 5%));
+  backdrop-filter: blur(2px);
+}
+.auth-card{
+  width:min(420px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(2,8,23,.25);
+  padding: 18px;
+  text-align: center;
+}
+.auth-card h3{ margin: 6px 0 10px }
+.auth-card p{ margin: 0 0 12px; color: var(--muted) }
+.auth-actions{ display:flex; gap:10px; margin-top:12px; justify-content:center }
+#authErr{ color: #dc2626; min-height: 1.2em; margin-top: 6px; }
+@keyframes shake{ 10%, 90% {transform: translateX(-1px);} 20%, 80% {transform: translateX(2px);} 30%, 50%, 70% {transform: translateX(-4px);} 40%, 60% {transform: translateX(4px);} }
+#authGate.shake .auth-card{ animation: shake .35s linear; }
+@media print{ #authGate{ display:none !important } }
+.logout-link{ color: var(--muted); text-decoration: none; margin-inline-start: 6px; font-size: .9rem }
+.logout-link:hover{ text-decoration: underline }
+
+
+/* ======= Site Password Gate (enforced default visible) ======= */
+#authGate{
+  position: fixed; inset: 0; display:flex; z-index: 9999;
+  align-items: center; justify-content: center;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bg), black 10%), color-mix(in oklab, var(--bg2), black 5%));
+  backdrop-filter: blur(2px);
+}
+.auth-card{
+  width:min(420px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(2,8,23,.25);
+  padding: 18px;
+  text-align: center;
+}
+.auth-card h3{ margin: 6px 0 10px }
+.auth-card p{ margin: 0 0 12px; color: var(--muted) }
+.auth-actions{ display:flex; gap:10px; margin-top:12px; justify-content:center }
+#authErr{ color: #dc2626; min-height: 1.2em; margin-top: 6px; }
+@keyframes shake{ 10%, 90% {transform: translateX(-1px);} 20%, 80% {transform: translateX(2px);} 30%, 50%, 70% {transform: translateX(-4px);} 40%, 60% {transform: translateX(4px);} }
+#authGate.shake .auth-card{ animation: shake .35s linear; }
+@media print{ #authGate{ display:none !important } }
+/* Hide app interactions while locked */
+body.locked .app{ filter: blur(3px); pointer-events: none; user-select: none; }
+
+</style>
+</head>
+<body class="locked">
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo"></div><h2>إدارة الاستهلاك</h2></div>
+<div class="nav">
+      <button id="nav-dashboard" class="active">اللوحة</button>
+      <button id="nav-items">الأصناف</button>
+      <button id="nav-consumption">الاستهلاك</button>
+      <button id="nav-reports">التقارير</button>
+    </div>
+    <div class="side-signature-footer">\1 · <a href="#" id="logoutLink" class="logout-link">تسجيل خروج</a></div>
+  </aside>
+  <div class="content">
+    <header>
+      <div class="topbar">
+        <div>
+          <h1>لوحة إدارة استهلاك المخزن والمطبخ</h1>
+          <div class="muted"></div>
+        </div>
+        <div class="push zoom">
+          <label class="muted">حجم الواجهة</label>
+          <input id="zoomRange" type="range" min="0.9" max="1.5" step="0.01" />
+          <button id="btnResetZoom" class="btn btn-ghost btn-sm">إفتراضي</button>
+        </div>
+        <div class="toolbar" style="margin-inline-start:12px">
+          <label class="muted" for="themeSelect">السِّمة</label>
+          <select id="themeSelect" style="width:160px">
+            <option value="auto">تلقائي</option>
+            <option value="light">فاتح</option>
+            <option value="dark">داكن</option>
+          </select>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="grid grid-3">
+        <section class="card">
+          <div class="section-title"><h3>١) اختر الفترة</h3></div>
+          <div class="toolbar">
+            <div style="flex:1">
+              <label for="month">(اختياري) شهر العمل الافتراضي</label>
+              <input type="month" id="month" />
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div class="toolbar">
+            <div style="flex:1">
+              <label for="reportStart">بداية التقرير</label>
+              <input type="date" id="reportStart" />
+            </div>
+            <div style="flex:1">
+              <label for="reportEnd">نهاية التقرير</label>
+              <input type="date" id="reportEnd" />
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <label for="username">اسم المستخدم</label>
+          <input id="username" placeholder="اكتب اسم المستخدم هنا" />
+          <div class="spacer"></div>
+
+          <!-- فكرة مضافة: حد تنبيه نقص المخزون -->
+          <div class="toolbar">
+            <div style="width:220px">
+              <label for="lowThreshold">حد التنبيه %</label>
+              <input type="number" id="lowThreshold" min="1" max="90" step="1" placeholder="25" />
+            </div>
+            
+          </div>
+
+          <div class="spacer"></div>
+          <div class="toolbar">
+            <button id="btnNewMonth" class="btn btn-warn">بدء شهر جديد</button>
+            <button id="btnClearMonth" class="btn btn-danger">مسح بيانات هذا الشهر</button>
+            <span class="muted">PIN: 0000</span>
+          </div>
+          <div class="spacer"></div>
+          <div class="toolbar">
+            <button id="btnPrint" class="btn btn-primary">تقرير PDF (الشهر)</button>
+            <button id="btnPrintRange" class="btn btn-ghost">تقرير للمدة</button>
+            <div class="push"></div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="section-title"><h3>٢) إجمالي الأصناف</h3></div>
+          <div class="toolbar">
+            <div style="flex:1"><label for="itemName">الصنف</label><input id="itemName" placeholder="مثال: علبة لبن" /></div>
+            <div style="width:240px"><label for="itemTotal">الإجمالي</label><input id="itemTotal" type="number" min="0" step="1" placeholder="0" /></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="toolbar">
+            <button id="btnAddItem" class="btn btn-primary">حفظ/تحديث</button>
+            <button id="btnDeleteItem" class="btn btn-ghost">حذف الصنف</button>
+            <div class="push"></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="toolbar">
+            <div style="flex:1">
+              <label for="editItem">أو اختر صنفًا لتعديله مباشرة</label>
+              <select id="editItem"></select>
+              <small class="muted">عند الاختيار سيتم ملء حقلي “الصنف” و“الإجمالي” تلقائيًا.</small>
+            </div>
+          </div>
+          <div class="spacer"></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>الصنف</th><th>إجمالي الشهر</th><th>المستهلك</th><th>المتبقي</th><th>تحكم</th></tr></thead>
+            <tbody id="itemsTable"></tbody>
+          </table></div>
+        </section>
+        <section class="card">
+          <div class="section-title"><h3>٣) إضافة استهلاك</h3></div>
+          <label for="consItem">الصنف</label><select id="consItem"></select>
+          <label for="consQty">الكمية</label><input id="consQty" type="number" min="1" step="1" placeholder="1" />
+          <label for="consPlace">المكان</label>
+          <select id="consPlace">
+            <option value="مبنى الـAdmin">مبنى الـAdmin</option>
+            <option value="مبنى الـControl">مبنى الـControl</option>
+            <option value="غرفة الأمن الداخلية">غرفة الأمن الداخلية</option>
+            <option value="غرفة الأمن الخارجية">غرفة الأمن الخارجية</option>
+            <!-- إضافاتك: الكامب والعيادة -->
+            <option value="الكامب">الكامب</option>
+            <option value="العيادة">العيادة</option>
+          </select>
+          <label for="consDate">التاريخ</label><input id="consDate" type="date" />
+          <div class="spacer"></div>
+          <button id="btnAddCons" class="btn btn-ok">إضافة</button>
+        </section>
+      </div>
+
+      <div class="grid grid-2 printable" style="margin-top:18px">
+        <section class="card">
+          <div class="section-title">
+            <h3>سجل الاستهلاك</h3>
+            <span id="totalMoves" class="pill"></span>
+            <div class="push toolbar">
+              <button id="btnExport" class="btn btn-ghost btn-sm">تصدير (JSON)</button>
+              <label for="importFile" class="btn btn-ghost btn-sm" style="cursor:pointer">استيراد</label>
+              <input id="importFile" type="file" accept="application/json" style="display:none" />
+            </div>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>التاريخ</th><th>الصنف</th><th>الكمية</th><th>المكان</th><th></th></tr></thead>
+            <tbody id="movesTable"></tbody>
+          </table></div>
+        </section>
+        <section class="card">
+          <div class="section-title"><h3>ملخص حسب المبنى/الغرفة</h3></div>
+          <div class="grid" style="grid-template-columns:1fr 1fr">
+            <div><div class="muted">إجمالي مستهلك</div><div class="pill"><span class="kpi" id="kpiTotal">0</span></div></div>
+            <div><div class="muted">عدد الأصناف</div><div class="pill"><span class="kpi" id="kpiItems">0</span></div></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>المكان</th><th>الإجمالي المستهلك</th></tr></thead>
+            <tbody id="byPlace"></tbody>
+          </table></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- مساحة الطباعة (أربعة + واحد إضافي) -->
+<div id="printArea" style="display:none; color:#111; padding:24px; font-family:Arial, 'Noto Naskh Arabic', serif; background:#fff;">
+  <h1 style="margin:0 0 8px; color:#111;">تقرير استهلاك المخزن والمطبخ</h1>
+  <div id="printMeta" style="margin-bottom:12px; color:#333"></div>
+
+  <h2 style="margin:16px 0 8px; color:#111;">ملخص الأصناف</h2>
+  <table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse; background:#fff; color:#111;">
+    <thead><tr style="background:#e5e7eb; color:#111;"><th align="right">الصنف</th><th align="right">إجمالي الصنف</th><th align="right">المستهلك في المدة</th><th align="right">المتبقي</th></tr></thead>
+    <tbody id="printItems"></tbody>
+  </table>
+
+  <h2 style="margin:16px 0 8px; color:#111;">التوزيع حسب المكان</h2>
+  <table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse; background:#fff; color:#111;">
+    <thead><tr style="background:#e5e7eb; color:#111;"><th align="right">الصنف</th><th align="right">المكان</th><th align="right">المستهلك</th></tr></thead>
+    <tbody id="printItemPlaces"></tbody>
+  </table>
+
+  <h2 style="margin:16px 0 8px; color:#111;">تفاصيل الاستهلاك حسب المكان (بالتواريخ)</h2>
+  <table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse; background:#fff; color:#111;">
+    <thead><tr style="background:#e5e7eb; color:#111;"><th align="right">المكان</th><th align="right">التاريخ</th><th align="right">الصنف</th><th align="right">الكمية</th></tr></thead>
+    <tbody id="printPlaceDetails"></tbody>
+  </table>
+
+  <h2 style="margin:16px 0 8px; color:#111;">المتبقي في المخزن (فقط)</h2>
+  <table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse; background:#fff; color:#111;">
+    <thead><tr style="background:#e5e7eb; color:#111;"><th align="right">الصنف</th><th align="right">المتبقي</th></tr></thead>
+    <tbody id="printLeftOnly"></tbody>
+  </table>
+
+  <!-- مضافة: أصناف تحتاج توريد حسب الحد -->
+  <h2 style="margin:16px 0 8px; color:#111;">أصناف تحتاج إعادة توريد</h2>
+  <div id="criticalNote" style="margin:0 0 6px; color:#333"></div>
+  <table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse:collapse; background:#fff; color:#111;">
+    <thead><tr style="background:#e5e7eb; color:#111;"><th align="right">الصنف</th><th align="right">المتبقي</th><th align="right">النسبة المتبقية</th></tr></thead>
+    <tbody id="printCritical"></tbody>
+  </table>
+</div>
+
+<!-- PIN Modal -->
+<div id="pinModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+    <h4 id="pinTitle">تأكيد العملية</h4>
+    <div class="muted" id="pinAction">الرجاء إدخال الرقم السري.</div>
+    <label for="pinInput">الرقم السري</label>
+    <input id="pinInput" type="password" inputmode="numeric" placeholder="****" />
+    <div class="actions">
+      <button id="pinConfirm" class="btn btn-primary">تأكيد</button>
+      <button id="pinCancel" class="btn btn-ghost">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const fmtInt = (n) => Number(n||0).toLocaleString('ar-EG');
+const todayISO = () => new Date().toISOString().slice(0,10);
+const monthKeyFromInput = (val) => val;
+
+// Zoom
+const zoomRange = $('#zoomRange'); const btnResetZoom = $('#btnResetZoom');
+function setScale(val){ document.documentElement.style.setProperty('--scale', val); localStorage.setItem('inv-ui-scale', val); }
+(function initZoom(){ const saved = localStorage.getItem('inv-ui-scale') || '1.12'; zoomRange.value = saved; setScale(saved);
+  zoomRange.addEventListener('input', e => setScale(e.target.value)); btnResetZoom.addEventListener('click', ()=>{ zoomRange.value='1.12'; setScale('1.12'); }); })();
+
+// Theme
+const themeSelect = $('#themeSelect');
+function applyTheme(mode){ const root=document.documentElement; if(mode==='auto'){ const dark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; root.setAttribute('data-theme', dark? 'dark' : 'light'); } else { root.setAttribute('data-theme', mode); } }
+function saveTheme(mode){ localStorage.setItem('inv-theme', mode); applyTheme(mode); }
+(function initTheme(){ const saved = localStorage.getItem('inv-theme') || 'auto'; themeSelect.value = saved; applyTheme(saved); if(window.matchMedia){ const mq=window.matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener('change', ()=>{ if((localStorage.getItem('inv-theme')||'auto')==='auto') applyTheme('auto'); }); } themeSelect.addEventListener('change', ()=> saveTheme(themeSelect.value)); })();
+
+// PIN modal
+const ADMIN_PIN = '0000';
+const pinModal = $('#pinModal'); const pinInput = $('#pinInput'); const pinConfirm = $('#pinConfirm'); const pinCancel = $('#pinCancel'); const pinAction = $('#pinAction');
+function openModal(){ if(!pinModal) return; pinModal.style.display='flex'; setTimeout(()=> pinInput && pinInput.focus(), 0); }
+function closeModal(){ if(!pinModal) return; pinModal.style.display='none'; if(pinInput) pinInput.value=''; }
+function requirePinAsync(actionLabel='تنفيذ العملية'){ return new Promise((resolve)=>{
+  if(!pinModal){ const ok = prompt(actionLabel+' — أدخل PIN (افتراضي 0000):'); resolve(ok==='0000'); return; }
+  let attempts = 0; pinAction.textContent = actionLabel + ' — أدخل الرقم السري.'; openModal();
+  function ok(){ attempts++; const pin = (pinInput?.value)||''; if(pin === ADMIN_PIN){ cleanup(); resolve(true); } else { if(attempts>=3){ cleanup(); resolve(false); } else { if(pinInput){ pinInput.value=''; pinInput.focus(); } } } }
+  function cancel(){ cleanup(); resolve(false); }
+  function cleanup(){ pinConfirm.removeEventListener('click', ok); pinCancel.removeEventListener('click', cancel); pinInput && pinInput.removeEventListener('keydown', onKey); closeModal(); }
+  function onKey(e){ if(e.key==='Enter') ok(); if(e.key==='Escape') cancel(); }
+  pinConfirm.addEventListener('click', ok); pinCancel.addEventListener('click', cancel); pinInput && pinInput.addEventListener('keydown', onKey);
+});}
+
+// Storage
+function blankMonth(){ return { items: {}, moves: [] }; }
+function loadMonth(key){ try { const raw = localStorage.getItem('inv-'+key); return raw ? JSON.parse(raw) : blankMonth(); } catch(e){ return blankMonth(); } }
+function saveMonth(key, data){ localStorage.setItem('inv-'+key, JSON.stringify(data)); }
+function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+let stateKey = ''; let state = blankMonth();
+const DEFAULT_ITEMS = ['شاى لبيتون ناعم','شاى لبيتون فتلة','شاى اخضر','الاسبريسو حبوب','بن ابو عوف محوج','بن ابو عوف سادة','نسكافية كلا سيك','نسكافية جولد','لبن سائل','لبن بودرة','كاكاو','ينسون','نعناع','كركديه','كوفى ميكس 3*1'];
+
+function setMonth(key){
+  stateKey = key; localStorage.setItem('inv-last-month', key);
+  state = loadMonth(key);
+  if(Object.keys(state.items).length === 0){
+    const seen = new Set();
+    for(const n of DEFAULT_ITEMS){ const name=(n||'').trim().replace(/\\s+/g,' '); if(!name||seen.has(name)) continue; seen.add(name); state.items[name] = { total: 0 }; }
+    saveMonth(stateKey, state);
+  }
+  refreshUI();
+}
+
+function getThresholdRatio(){
+  const v = Number(localStorage.getItem('inv-low-threshold') || $('#lowThreshold')?.value || 25);
+  const clamped = isNaN(v) ? 25 : Math.min(90, Math.max(1, v));
+  return clamped / 100;
+}
+
+function updateItemEditorSelect(){
+  const sel = document.querySelector('#editItem'); if(!sel) return;
+  const names = Object.keys(state.items).sort((a,b)=>a.localeCompare(b,'ar'));
+  sel.innerHTML = '<option value="">— اختر صنفًا —</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+}
+
+function updateConsItemOptions(){
+  const sel = document.querySelector('#consItem'); const prev = sel.value; sel.innerHTML='';
+  const names = Object.keys(state.items).sort((a,b)=>a.localeCompare(b,'ar'));
+  if(names.length===0){ const opt=document.createElement('option'); opt.value=''; opt.textContent='— أضف أصنافًا أولاً —'; sel.appendChild(opt); return; }
+  for(const n of names){ const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); }
+  const saved = localStorage.getItem('inv-ui-consItem');
+  if(saved && names.includes(saved)) sel.value = saved; else if(names.includes(prev)) sel.value = prev;
+}
+
+function totalConsumedPerItem(name){ return state.moves.filter(m=>m.item===name).reduce((a,b)=>a+Number(b.qty||0),0); }
+function loadItemToEditor(name){ document.querySelector('#itemName').value = name; document.querySelector('#itemTotal').value = Number(state.items[name]?.total||0); document.querySelector('#itemTotal').focus(); }
+
+function renderItemsTable(){
+  const tbody = document.querySelector('#itemsTable'); tbody.innerHTML='';
+  const names = Object.keys(state.items);
+  if(names.length===0){ tbody.innerHTML = `<tr><td colspan="5" class="muted">لا توجد أصناف بعد.</td></tr>`; return; }
+  const thr = getThresholdRatio();
+  names.sort((a,b)=>a.localeCompare(b,'ar'));
+  for(const name of names){
+    const total = Number(state.items[name].total||0); const used = totalConsumedPerItem(name); const left = total - used;
+    let pillClass = 'pill-ok';
+    if(left <= 0) pillClass='pill-danger';
+    else if(total>0 && (left/total) <= thr) pillClass='pill-warn';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${name}</td><td>${fmtInt(total)}</td><td>${fmtInt(used)}</td><td><span class="pill ${pillClass}">${fmtInt(left)}</span></td><td><button class="btn btn-ghost" data-edit="${name}">تعديل</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderMoves(){
+  const tbody = document.querySelector('#movesTable'); tbody.innerHTML='';
+  const moves = [...state.moves].sort((a,b)=> (a.date||'').localeCompare(b.date||''));
+  document.querySelector('#totalMoves').textContent = moves.length + ' حركة';
+  if(moves.length===0){ tbody.innerHTML = `<tr><td colspan="5" class="muted">لا توجد حركات مسجلة بعد.</td></tr>`; return; }
+  for(const m of moves){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m.date}</td><td>${m.item}</td><td>${fmtInt(m.qty)}</td><td>${m.place}</td>
+                    <td><button class="btn btn-ghost" data-del="${m.id}">حذف</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+
+function renderByPlace(){
+  const tbody = document.querySelector('#byPlace'); if(!tbody) return; tbody.innerHTML='';
+  // Build totals by place and per-item details
+  const grouped = {};
+  for(const m of state.moves){
+    const p = m.place || 'غير محدد';
+    const it = m.item || '—';
+    const q = Number(m.qty||0);
+    if(!grouped[p]) grouped[p] = { total:0, items:{} };
+    grouped[p].total += q;
+    grouped[p].items[it] = (grouped[p].items[it]||0) + q;
+  }
+  const places = Object.keys(grouped);
+  if(places.length===0){
+    tbody.innerHTML = `<tr><td colspan="2" class="muted">لا توجد بيانات بعد.</td></tr>`;
+    return;
+  }
+  places.sort((a,b)=> (grouped[b].total - grouped[a].total) || a.localeCompare(b,'ar'));
+  for(const p of places){
+    // Summary row for the place
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><strong>${p}</strong></td><td>${fmtInt(grouped[p].total)}</td>`;
+    tbody.appendChild(tr);
+    // Details rows: item -> qty
+    const items = Object.entries(grouped[p].items).sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0],'ar'));
+    for(const [it, q] of items){
+      const dtr = document.createElement('tr');
+      dtr.innerHTML = `<td style="padding-right:28px; color:var(--muted)">— ${it}</td><td>${fmtInt(q)}</td>`;
+      tbody.appendChild(dtr);
+    }
+    // Spacer
+    const spacer = document.createElement('tr');
+    spacer.innerHTML = `<td colspan="2" style="height:6px; background:transparent; border:none"></td>`;
+    tbody.appendChild(spacer);
+  }
+}
+
+
+
+function updateKPIs(){ const total = state.moves.reduce((a,b)=>a+Number(b.qty||0),0); document.querySelector('#kpiTotal').textContent = fmtInt(total); document.querySelector('#kpiItems').textContent = Object.keys(state.items).length; }
+
+function refreshUI(){ const uname=($('#username').value||'').trim(); if(uname) localStorage.setItem('inv-username', uname); renderItemsTable(); updateItemEditorSelect(); updateConsItemOptions(); renderMoves(); renderByPlace(); updateKPIs(); }
+
+function bindPersist(id, key, ev='input'){ const el=$(id); if(!el) return; const saved=localStorage.getItem(key); if(saved!==null){ el.value = saved; } el.addEventListener(ev, ()=> localStorage.setItem(key, el.value||'')); }
+bindPersist('#reportStart','inv-ui-reportStart','change');
+bindPersist('#reportEnd','inv-ui-reportEnd','change');
+bindPersist('#consPlace','inv-ui-consPlace','change');
+bindPersist('#consDate','inv-ui-consDate','change');
+$('#consItem').addEventListener('change', ()=> localStorage.setItem('inv-ui-consItem', $('#consItem').value||''));
+
+// low threshold persist
+(function initLowThreshold(){
+  const el = $('#lowThreshold');
+  const saved = localStorage.getItem('inv-low-threshold');
+  el.value = saved || '25';
+  el.addEventListener('input', ()=>{
+    const v = Math.min(90, Math.max(1, Number(el.value||25)));
+    localStorage.setItem('inv-low-threshold', String(v));
+    refreshUI();
+  });
+})();
+
+// Export/Import
+$('#btnExport').addEventListener('click', ()=>{
+  if(!stateKey){ alert('اختر الشهر أولاً.'); return; }
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `inventory-${stateKey}.json`; a.click();
+  URL.revokeObjectURL(url);
+});
+$('#importFile').addEventListener('change', async (e)=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const text = await f.text();
+  try{
+    const data = JSON.parse(text);
+    if(!(await requirePinAsync('استيراد واستبدال بيانات الشهر'))) return;
+    state = data; saveMonth(stateKey, state); refreshUI();
+  }catch(err){ alert('ملف غير صالح.'); }
+});
+
+// UI events
+$('#btnNewMonth').addEventListener('click', async ()=>{
+  if(!$('#month').value){ alert('اختر الشهر أولاً.'); return; }
+  if(!(await requirePinAsync('بدء شهر جديد'))) return;
+  setMonth(monthKeyFromInput($('#month').value));
+});
+$('#btnClearMonth').addEventListener('click', async ()=>{
+  if(!stateKey){ alert('اختر الشهر أولاً.'); return; }
+  if(!(await requirePinAsync('مسح بيانات هذا الشهر'))) return;
+  if(confirm('سيتم مسح بيانات هذا الشهر فقط. متابعة؟')){
+    try{ localStorage.removeItem('inv-'+stateKey); }catch(e){}
+    state = blankMonth();
+    setMonth(stateKey);
+  }
+});
+$('#btnAddItem').addEventListener('click', ()=>{
+  if(!stateKey){ alert('اختر الشهر أولاً.'); return; }
+  const name=($('#itemName').value||'').trim();
+  const total=Number($('#itemTotal').value||0);
+  if(!name){ alert('اكتب اسم الصنف.'); return; }
+  if(total<0){ alert('الإجمالي لا يمكن أن يكون سالبًا.'); return; }
+  state.items[name]={ total };
+  saveMonth(stateKey, state);
+  $('#itemName').value=''; $('#itemTotal').value='';
+  refreshUI();
+});
+$('#btnDeleteItem').addEventListener('click', ()=>{
+  if(!stateKey){ alert('اختر الشهر أولاً.'); return; }
+  const name=($('#itemName').value||'').trim();
+  if(!name){ alert('اكتب اسم الصنف الذي تريد حذفه.'); return; }
+  if(!(name in state.items)){ alert('هذا الصنف غير موجود.'); return; }
+  const used=state.moves.filter(m=>m.item===name).reduce((a,b)=>a+Number(b.qty||0),0);
+  if(used>0 && !confirm('تم تسجيل استهلاك لهذا الصنف. حذف الصنف سيُبقي الحركات ولكنه سيزيل الصنف من الملخص. متابعة؟')) return;
+  delete state.items[name];
+  saveMonth(stateKey, state); refreshUI();
+});
+$('#editItem').addEventListener('change', ()=>{ const name=$('#editItem').value; if(name) { loadItemToEditor(name); } });
+$('#itemsTable').addEventListener('click', (e)=>{ const n=e.target?.dataset?.edit; if(n){ loadItemToEditor(n); window.scrollTo({top:0, behavior:'smooth'}); } });
+$('#btnAddCons').addEventListener('click', ()=>{
+  if(!stateKey){ alert('اختر الشهر أولاً.'); return; }
+  const item=$('#consItem').value;
+  const qty=Number($('#consQty').value||0);
+  const place=$('#consPlace').value;
+  const date=$('#consDate').value || todayISO();
+  if(!item){ alert('اختر الصنف.'); return; }
+  if(qty<=0){ alert('أدخل كمية صحيحة (> 0).'); return; }
+  const total=Number((state.items[item]||{}).total||0);
+  const used=state.moves.filter(m=>m.item===item).reduce((a,b)=>a+Number(b.qty||0),0);
+  const left=total-used;
+  if(qty>left){ alert(`لا يمكن صرف ${qty}. المتبقي ${left}.`); return; }
+  const mv={id:uid(), item, qty, place, date}; state.moves.push(mv); saveMonth(stateKey, state);
+  $('#consQty').value=''; $('#consDate').value=localStorage.getItem('inv-ui-consDate')||'';
+  refreshUI();
+});
+$('#movesTable').addEventListener('click', (e)=>{ const id=e.target?.dataset?.del; if(!id) return; const i=state.moves.findIndex(m=>m.id===id); if(i>-1 && confirm('حذف هذه الحركة؟')){ state.moves.splice(i,1); saveMonth(stateKey, state); refreshUI(); } });
+
+// ==== التقرير المبسّط ====
+function withinRangeStr(dStr, sStr, eStr){
+  if(!dStr) return false;
+  return dStr >= sStr && dStr <= eStr;
+}
+function makeReport(range){
+  const uname = localStorage.getItem('inv-username') || ($('#username').value||'غير محدد');
+  const thrPct = Number(localStorage.getItem('inv-low-threshold') || 25);
+  const thrRatio = Math.min(90, Math.max(1, thrPct))/100;
+  document.querySelector('#printMeta').textContent = `الفترة: ${range.label} — المستخدم: ${uname}`;
+
+  const itemsBody=document.querySelector('#printItems'); itemsBody.innerHTML='';
+  const names=Object.keys(state.items).sort((a,b)=>a.localeCompare(b,'ar'));
+  for(const name of names){
+    const total=Number(state.items[name].total||0);
+    const consumedInRange=state.moves.filter(m=>m.item===name && withinRangeStr(m.date, range.sStr, range.eStr)).reduce((a,b)=>a+Number(b.qty||0),0);
+    const usedTotal=state.moves.filter(m=>m.item===name).reduce((a,b)=>a+Number(b.qty||0),0);
+    const left=total-usedTotal;
+    const tr=document.createElement('tr'); tr.innerHTML=`<td>${name}</td><td align="right">${fmtInt(total)}</td><td align="right">${fmtInt(consumedInRange)}</td><td align="right">${fmtInt(left)}</td>`; itemsBody.appendChild(tr);
+  }
+
+  const itemPlaceMap = {};
+  for(const m of state.moves){
+    if(!withinRangeStr(m.date, range.sStr, range.eStr)) continue;
+    const key = m.item + '||' + m.place;
+    itemPlaceMap[key] = (itemPlaceMap[key]||0) + Number(m.qty||0);
+  }
+  const ipBody = document.querySelector('#printItemPlaces'); ipBody.innerHTML='';
+  const keys = Object.keys(itemPlaceMap).sort((a,b)=>a.localeCompare(b,'ar'));
+  if(keys.length===0){ const tr=document.createElement('tr'); tr.innerHTML=`<td colspan="3" align="center">لا توجد بيانات في هذه المدة.</td>`; ipBody.appendChild(tr); }
+  for(const k of keys){
+    const [item, place] = k.split('||');
+    const tr = document.createElement('tr'); tr.innerHTML = `<td>${item}</td><td>${place}</td><td align="right">${fmtInt(itemPlaceMap[k])}</td>`;
+    ipBody.appendChild(tr);
+  }
+
+  // تفاصيل الاستهلاك حسب المكان بالتواريخ
+  const detBody = document.querySelector('#printPlaceDetails'); detBody.innerHTML='';
+  const movesInRange = state.moves
+    .filter(m => withinRangeStr(m.date, range.sStr, range.eStr))
+    .sort((a,b)=> (a.place||'').localeCompare(b.place||'', 'ar') || (a.date||'').localeCompare(b.date||''));
+  if(movesInRange.length===0){
+    const tr=document.createElement('tr'); tr.innerHTML=`<td colspan="4" align="center">لا توجد حركات في هذه المدة.</td>`; detBody.appendChild(tr);
+  } else {
+    for(const m of movesInRange){
+      const tr=document.createElement('tr'); tr.innerHTML=`<td>${m.place}</td><td>${m.date}</td><td>${m.item}</td><td align="right">${fmtInt(m.qty)}</td>`; detBody.appendChild(tr);
+    }
+  }
+
+  // المتبقي فقط
+  const leftOnlyBody = document.querySelector('#printLeftOnly'); leftOnlyBody.innerHTML='';
+  let hasLeft=false;
+  for(const name of names){
+    const total=Number(state.items[name].total||0);
+    const usedTotal=state.moves.filter(m=>m.item===name).reduce((a,b)=>a+Number(b.qty||0),0);
+    const left=total-usedTotal;
+    if(left>0){ hasLeft=true; const tr=document.createElement('tr'); tr.innerHTML=`<td>${name}</td><td align="right">${fmtInt(left)}</td>`; leftOnlyBody.appendChild(tr); }
+  }
+  if(!hasLeft){ const tr=document.createElement('tr'); tr.innerHTML=`<td colspan="2" align="center">لا يوجد متبقي.</td>`; leftOnlyBody.appendChild(tr); }
+
+  // أصناف تحتاج توريد
+  const criticalBody = document.querySelector('#printCritical'); criticalBody.innerHTML='';
+  $('#criticalNote').textContent = `يظهر أدناه الأصناف التي متبقيها أقل من أو يساوي ${Math.round(thrRatio*100)}٪ من الإجمالي.`;
+  let anyCritical = false;
+  for(const name of names){
+    const total=Number(state.items[name].total||0);
+    const usedTotal=state.moves.filter(m=>m.item===name).reduce((a,b)=>a+Number(b.qty||0),0);
+    const left=total-usedTotal;
+    const ratio = total>0 ? (left/total) : 0;
+    if(total>0 && ratio <= thrRatio){
+      anyCritical = true;
+      const pct = Math.round(ratio*100) + '%';
+      const tr=document.createElement('tr'); tr.innerHTML=`<td>${name}</td><td align="right">${fmtInt(left)}</td><td align="right">${pct}</td>`;
+      criticalBody.appendChild(tr);
+    }
+  }
+  if(!anyCritical){
+    const tr=document.createElement('tr'); tr.innerHTML=`<td colspan="3" align="center">لا توجد أصناف حرجة وفق الحد الحالي.</td>`;
+    criticalBody.appendChild(tr);
+  }
+}
+
+// فتح نافذة الطباعة
+function openPrintFor(range){
+  makeReport(range);
+  const el = document.getElementById('printArea');
+  el.style.display = 'block';
+  const cleanup = () => { el.style.display = 'none'; window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(()=>window.print(), 50);
+}
+
+// Helpers
+function computeMonthRangeFromStateKey(){
+  if(!stateKey) return null; const [yy, mm] = stateKey.split('-').map(Number);
+  const last = new Date(yy, mm, 0).getDate();
+  const sStr = `${yy}-${String(mm).padStart(2,'0')}-01`;
+  const eStr = `${yy}-${String(mm).padStart(2,'0')}-${String(last).padStart(2,'0')}`;
+  const startLocal = new Date(yy, mm-1, 1); const endLocal = new Date(yy, mm-1, last, 23,59,59,999);
+  return { sStr, eStr, startLocal, endLocal, label: `شهر ${stateKey}` };
+}
+function computeRangeFromInputs(){
+  const sStr = $('#reportStart').value; const eStr = $('#reportEnd').value;
+  if(!sStr && !eStr) return null; if(!sStr || !eStr){ alert('حدد تاريخ البداية والنهاية معًا.'); return 'ERR'; }
+  if(eStr < sStr){ alert('تاريخ النهاية يجب أن يكون بعد البداية.'); return 'ERR'; }
+  const s = new Date(sStr+'T00:00:00'); const e = new Date(eStr+'T23:59:59');
+  return { sStr, eStr, startLocal: s, endLocal: e, label: `${sStr} → ${eStr}` };
+}
+
+// Bind report buttons
+$('#btnPrint').addEventListener('click', ()=>{ const r = computeMonthRangeFromStateKey(); if(r) openPrintFor(r); });
+$('#btnPrintRange').addEventListener('click', ()=>{
+  const ur = computeRangeFromInputs();
+  if(ur === 'ERR' || !ur){ alert('لازم تختار تاريخ بداية ونهاية للتقرير.'); return; }
+  openPrintFor(ur);
+});
+
+// Init
+$('#username').addEventListener('input', ()=>{ localStorage.setItem('inv-username', $('#username').value || ''); });
+$('#month').addEventListener('change', ()=> setMonth(monthKeyFromInput($('#month').value)) );
+(function init(){
+  const last=localStorage.getItem('inv-last-month');
+  const d=new Date(); const defKey=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const key=last||defKey;
+  $('#month').value=key; setMonth(key);
+  $('#username').value=localStorage.getItem('inv-username')||'';
+  const savedPlace=localStorage.getItem('inv-ui-consPlace'); if(savedPlace) $('#consPlace').value=savedPlace;
+  $('#consDate').value = localStorage.getItem('inv-ui-consDate') || todayISO();
+})();
+
+// ===== تنقّل الشريط الجانبي =====
+(function initSidebarNav(){
+  const dashBtn = document.getElementById('nav-dashboard');
+  const itemsBtn = document.getElementById('nav-items');
+  const consBtn  = document.getElementById('nav-consumption');
+  const repsBtn  = document.getElementById('nav-reports');
+
+  const cards = document.querySelectorAll('main .card');
+  const secPeriod = cards[0];       // ١) اختر الفترة
+  const secItems  = cards[1];       // ٢) إجمالي الأصناف
+  const secCons   = cards[2];       // ٣) إضافة استهلاك
+  const secReps   = document.querySelector('main .printable') || cards[3]; // التقارير (السجل + الملخص)
+
+  function setActive(btn){
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+  }
+  function goTo(el, btn){
+    if(!el) return;
+    el.scrollIntoView({behavior:'smooth', block:'start'});
+    setActive(btn);
+  }
+
+  dashBtn?.addEventListener('click', ()=>{ window.scrollTo({top:0, behavior:'smooth'}); setActive(dashBtn); });
+  itemsBtn?.addEventListener('click', ()=> goTo(secItems, itemsBtn));
+  consBtn?.addEventListener('click', ()=> goTo(secCons, consBtn));
+  repsBtn?.addEventListener('click', ()=> goTo(secReps, repsBtn));
+
+  // تحديث الحالة أثناء التمرير (اختياري)
+  const map = [
+    [secPeriod, dashBtn],
+    [secItems, itemsBtn],
+    [secCons, consBtn],
+    [secReps, repsBtn]
+  ].filter(([el])=>!!el);
+
+  const io = new IntersectionObserver((entries)=>{
+    // اختر القسم الأكثر بروزًا
+    let topEntry = null;
+    for(const e of entries){
+      if(!topEntry || e.intersectionRatio > topEntry.intersectionRatio){
+        topEntry = e;
+      }
+    }
+    if(topEntry){
+      const idx = map.findIndex(([el])=>el===topEntry.target);
+      if(idx>-1){ setActive(map[idx][1]); }
+    }
+  }, {rootMargin: "-40% 0px -50% 0px", threshold: [0.0, 0.25, 0.5, 0.75, 1]});
+
+  map.forEach(([el])=> io.observe(el));
+})();
+
+
+// ======= Site password gate =======
+(function(){
+  const SITE_PASS = '1122';
+  const gate = document.getElementById('authGate');
+  const pass = document.getElementById('authPass');
+  const btn  = document.getElementById('authBtn');
+  const err  = document.getElementById('authErr');
+  function unlock(){
+    localStorage.setItem('inv-site-auth', '1');
+    gate.style.display = 'none';
+    document.body.classList.remove('locked');
+  }
+  function lock(){
+    gate.style.display = 'flex';
+    document.body.classList.add('locked');
+    setTimeout(()=> pass && pass.focus(), 0);
+  }
+  function tryLogin(){
+    const v = (pass?.value||'').trim();
+    if(v === SITE_PASS){ unlock(); }
+    else{
+      err.textContent = 'كلمة المرور غير صحيحة.';
+      gate.classList.add('shake');
+      setTimeout(()=> gate.classList.remove('shake'), 360);
+      pass && pass.select();
+    }
+  }
+  // On load
+  if(localStorage.getItem('inv-site-auth') === '1'){ unlock(); } else { lock(); }
+  btn && btn.addEventListener('click', tryLogin);
+  pass && pass.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+  // Logout link (if present)
+  const logout = document.getElementById('logoutLink');
+  if(logout){
+    logout.addEventListener('click', (e)=>{
+      e.preventDefault();
+      localStorage.removeItem('inv-site-auth');
+      lock();
+    });
+  }
+})();
+
+</script>
+
+<div id="authGate" aria-modal="true" role="dialog">
+  <div class="auth-card">
+    <div class="logo" style="margin:0 auto 8px; width:42px; height:42px; border-radius:12px"></div>
+    <h3>تسجيل الدخول</h3>
+    
+    <label for="authUser">اسم المستخدم</label>
+    <input id="authUser" type="text" placeholder="اكتب اسم المستخدم" autocomplete="off" autocapitalize="none" spellcheck="false" />
+    <label for="authPass" style="margin-top:8px; display:block">كلمة المرور</label>
+    <input id="authPass" type="password" inputmode="numeric" placeholder="اكتب كلمة المرور" autocomplete="new-password" />
+    <div id="authErr"></div>
+    <div class="auth-actions">
+      <button id="authBtn" class="btn btn-primary">دخول</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<script>
+// ======= Site password gate (username + password, no remember) =======
+document.addEventListener('DOMContentLoaded', function(){
+  const VALID_USER = 'reda';       // case-insensitive
+  const VALID_PASS = '1715';       // numeric string
+  const gate = document.getElementById('authGate');
+  const user = document.getElementById('authUser');
+  const pass = document.getElementById('authPass');
+  const btn  = document.getElementById('authBtn');
+  const err  = document.getElementById('authErr');
+
+  function unlock(){
+    if(gate){ gate.style.display = 'none'; }
+    document.body.classList.remove('locked');
+  }
+  function lock(){
+    if(gate){ gate.style.display = 'flex'; }
+    document.body.classList.add('locked');
+    if(user) user.value='';
+    if(pass) pass.value='';
+    setTimeout(()=> (user && user.focus()), 0);
+  }
+  function tryLogin(){
+    const u = (user?.value||'').trim().toLowerCase();
+    const p = (pass?.value||'').trim();
+    if(u === VALID_USER && p === VALID_PASS){
+      unlock();
+    }else{
+      if(err) err.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
+      if(gate){ gate.classList.add('shake'); setTimeout(()=> gate.classList.remove('shake'), 360); }
+      if(user && !u) { user.focus(); return; }
+      if(pass){ pass.value=''; pass.focus(); }
+    }
+  }
+
+  lock();
+  if(btn) btn.addEventListener('click', tryLogin);
+  if(user) user.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+  if(pass) pass.addEventListener('keydown', (e)=>{ if(e.key==='Enter') tryLogin(); });
+});
+</script>
+
+</body>
+</html>
